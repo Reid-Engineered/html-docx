@@ -137,7 +137,7 @@ a way to read options back off a built `TextRun`/`ExternalHyperlink`.
 ---
 
 ## Stage 3 — Block-level structure `[claude-code]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/blocks.js`:
 - `h1`-`h6` -> real `HeadingLevel.HEADING_1`-`6`, pulling color/size from
@@ -152,7 +152,33 @@ Wire into `src/convert.js` so a fixture with headings/paragraphs/blockquotes
 converts end to end. Run `scripts/verify.sh` and visually confirm output
 before marking done.
 
-**Deviations from plan:**
+**Deviations from plan:** Heading/paragraph/blockquote color+size fidelity
+required a small addition to Stage 2's `inline.js`: exported `BASE_PROPS`
+and `resolveRunProps` (previously private) so `blocks.js` can resolve a
+block element's own tag+CSS formatting and seed it as `convertInline`'s
+`inherited` base. Without this, a bare text child with no wrapping `<span>`
+(e.g. `<h1>Title</h1>` or `<p class="lead">...</p>` with the color/weight
+set on the tag itself, not a child) would silently lose that styling —
+confirmed by `testParagraphTagLevelCssAppliesToBareText` in
+`test/blocks.test.js`. `convert.js` now calls `convertBlock(root)` and
+falls back to a single empty `Paragraph` if a document has no block
+content (OOXML requires at least one). Generic containers (`div`,
+`section`, `body`, `html`, etc.) are flattened by recursion rather than
+mapped to anything themselves. `ul`/`ol`/`table`/`img` are recognized but
+intentionally skipped (return nothing) pending Stages 4-6, rather than
+guessed at. Found and fixed a real bug during visual verification:
+node-html-parser surfaces a leading `<!DOCTYPE html>` as a plain root-level
+text node (not a distinct node type), which was rendering as literal body
+text — `convertBlock` now filters it out; regression-tested in
+`testDoctypeNotRenderedAsContent`. Host had no `soffice`/`pdftoppm` on
+WSL PATH per `docs/VERIFY.md`, but Windows LibreOffice exists at
+`/mnt/c/Program Files/LibreOffice/program/soffice.exe` — used that
+directly (via `wslpath -w` for UNC paths) for one-off PDF conversion, then
+read the PDF's rendered pages directly rather than rasterizing with
+`pdftoppm` (not installed). Visual output confirmed: heading colors/sizes,
+tag-level CSS on bare text, bold+hyperlink nesting, blockquote indent+left
+border, `pre` monospace/shading/preserved indentation, and `hr` as a
+bottom-border paragraph (not a table) all render correctly in LibreOffice.
 
 ---
 
