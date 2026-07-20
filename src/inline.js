@@ -10,7 +10,7 @@ const CODE_TAGS = new Set(['code']);
 const CODE_FONT = 'Courier New';
 const CODE_SHADING_FILL = 'EDEDED';
 
-const BASE_PROPS = Object.freeze({
+export const BASE_PROPS = Object.freeze({
   bold: false,
   italics: false,
   underline: false,
@@ -84,7 +84,7 @@ function firstFontFamily(fontFamily) {
  * @param {Object} inherited
  * @returns {Object}
  */
-function resolveRunProps(node, computedStyle, inherited) {
+export function resolveRunProps(node, computedStyle, inherited) {
   const tagName = node.tagName ? node.tagName.toLowerCase() : '';
   const isCode = inherited.isCode || CODE_TAGS.has(tagName);
 
