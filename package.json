@@ -8,16 +8,14 @@
     "html2docx": "./bin/cli.js"
   },
   "scripts": {
-    "test": "node test/style.test.js && node test/inline.test.js && node test/blocks.test.js && node test/lists.test.js && node test/tables.test.js && node test/images.test.js"
+    "test": "node test/style.test.js && node test/inline.test.js && node test/blocks.test.js && node test/lists.test.js && node test/tables.test.js && node test/images.test.js && node test/cli.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "docx": "^9.7.1",
+    "jszip": "^3.10.1",
     "node-html-parser": "^9.0.0"
-  },
-  "devDependencies": {
-    "jszip": "^3.10.1"
   }
 }

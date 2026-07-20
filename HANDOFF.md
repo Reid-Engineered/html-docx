@@ -12,12 +12,12 @@
 | Field | Value |
 |-------|--------|
 | **HEAD** | run `git log -1 --oneline` |
-| **Branch** | run `git branch --show-current` (expect `main` for Stage 7) |
-| **Working tree** | run `git status -sb` — clean before starting Stage 7 |
+| **Branch** | run `git branch --show-current` (expect `main` for Stage 8) |
+| **Working tree** | run `git status -sb` — clean before starting Stage 8 |
 | **origin** | run `git status -sb` (likely ahead; push optional) |
-| **Stages complete on `main`** | 0–6 (`3f9cb01` images + Janus options fix commit) |
-| **Janus accepts** | Stages 3–6 — `docs/reviews/2026-07-20-stage-*.md` |
-| **Next stage** | **7 CLI+verify** `[claude-code]` |
+| **Stages complete on `main`** | 0–7 (CLI + verify: manual arg parsing, file/dir/URL input, `-f docx\|odt`, `--outdir`, `--toc`, `--reference`, always-verify) |
+| **Janus accepts** | Stages 3–6 — `docs/reviews/2026-07-20-stage-*.md` (Stage 7 not yet reviewed — ask Marcus to pull Janus in if a third-source accept is wanted) |
+| **Next stage** | **8 Polish / edge-case hardening** `[antigravity]` |
 | **Open P1 debt** | Nested list numbering (Stage 4) — leave unless assigned |
 | **Open P2 (images)** | No local relative `src=` paths; 4:3 aspect fallback |
 
@@ -27,9 +27,41 @@
 cd /home/marcus/html-docx
 git status -sb
 git log -1 --oneline
-npm test                # expect 39 tests (images suite includes inline-remote regression)
+npm test                # expect 54 tests (adds test/cli.test.js, 15 tests)
 ./scripts/verify.sh fixtures/images_full.html
+node bin/cli.js fixtures/blocks_full.html -o /tmp/toc.docx --toc   # visual: TOC should show entries, not a blank gap
 ```
+
+---
+
+## Stage 7 note (Claude Code, 2026-07-20) — read before Stage 8
+
+Implemented `bin/cli.js` (file/directory/URL input, `-f docx|odt` via `pandoc`, `--outdir`
+batch mode, `--toc`, `--reference`, always-on LibreOffice PDF verify), `src/verify.js`
+(new shared verify module), and extended `src/convert.js` for `toc`/`referenceStylesXml`.
+Full rationale in BUILD_PLAN.md → Stage 7 deviations.
+
+**Found + fixed via the LibreOffice PDF verify step itself** (not caught by unit tests):
+`--toc` produced a structurally-correct TOC field (`w:sdt`, right instruction,
+`updateFields` set) that rendered as a **blank gap** in the LibreOffice headless PDF —
+LO never refreshes field-based TOCs in `--convert-to pdf`, only Word does that, on open.
+Fixed by also populating `TableOfContents`'s `cachedEntries` (heading text + level,
+collected from the DOM) so there's real static content for any non-refreshing viewer;
+Word still recomputes the field (including real page numbers) on open. This is exactly
+the kind of defect the DoD's "don't trust `npm test` alone for layout-sensitive work"
+rule exists to catch — worth flagging since Stage 7 (CLI) isn't one of the DoD's
+explicitly-named layout categories (blocks/lists/tables/images), but `--toc` clearly
+qualifies and would have shipped broken on unit tests alone.
+
+Always-verify is a **soft-fail default**: `verifyOutput()` always runs after every
+write and prints PDF/JPEG paths, but a failure only warns rather than aborting the
+command — requiring a working LibreOffice install for every `html2docx` invocation felt
+wrong for a general-purpose CLI, as opposed to this repo's own dev-loop DoD. `--no-verify`
+opts out; `--strict-raster` / `STRICT_RASTER=1` makes a missing `pdftoppm` fail instead
+of warn (same convention as `scripts/verify.sh`).
+
+Not requested from Janus for this stage — flag if a third-source accept is wanted before
+Stage 8 relies on the CLI.
 
 ---
 
@@ -96,12 +128,26 @@ Real numbering configs on Document; ul/ol nest; continuation indent.
 Janus: [docs/reviews/2026-07-20-stage-4.md](./docs/reviews/2026-07-20-stage-4.md) ACCEPT with P1.  
 Tests: `test/lists.test.js` (includes post-list heading has no `numPr`).
 
+### 5b. Stage 5 — Tables (`src/tables.js`)
+Real `Table`; header `th`/`thead` bold+`CLEAR` `D9D9D9`; DXA 9000 split evenly across columns;
+`colspan`/`rowspan` via docx's own auto-generated `vMerge` continuation cells (just tracks
+which columns are already occupied). Cell content collapses to a single paragraph.
+Janus: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) ACCEPT (unit + LO PDF).
+Tests: `test/tables.test.js` (8). *(This entry was missing from a prior HANDOFF rewrite — restored per "git/BUILD_PLAN is ground truth.")*
+
 ### 6. Stage 6 — Images (`src/images.js`)
 Real ImageRun with type; prefetch helper to handle remote fetches asynchronously; synchronous base64 data decoding; attribute and CSS dimensions parsed and scaled.
-Tests: `test/images.test.js` (4).
+Tests: `test/images.test.js` (5, including the inline-remote-prefetch regression from the Janus Stage 6 fix above).
+
+### 7. Stage 7 — CLI + verification loop (`bin/cli.js`, `src/verify.js`)
+File/directory/URL input, `-f docx|odt` (odt via `pandoc`), `--outdir` batch mode, `--toc`
+(real `TableOfContents` field + `cachedEntries` so it renders without a field refresh),
+`--reference TEMPLATE` (merges the template's `word/styles.xml` via docx's `externalStyles`),
+always-on LibreOffice PDF verify after every write (soft-fail by default, `--strict-raster`
+to require `pdftoppm`, `--no-verify` to skip). See "Stage 7 note" above for the TOC bug
+found via visual verify. Tests: `test/cli.test.js` (15).
 
 ### Not done
-- Stage 7 full CLI (batch, URL, toc, reference, odt, always-verify)
 - Stage 8 polish (nested list fix, shorthands, etc.)
 
 
@@ -109,9 +155,17 @@ Tests: `test/images.test.js` (4).
 
 ## Instructions for the next stage owner
 
-1. Branch from latest `main`: `git checkout main && git pull` (if remote used) `&& git checkout -b stage-N`
-2. Implement BUILD_PLAN stage N only
-3. Reuse `convertInline` / `cssColorToHex` / `resolveRunProps`+`BASE_PROPS`; register handlers in `BLOCK_HANDLERS`
-4. `npm test` + layout PDF via `./scripts/verify.sh fixtures/...`
-5. Update BUILD_PLAN `[x]` + deviations; rewrite **Current Status** table from git; merge to `main`
-6. Leave tree clean; link Janus review path if one was requested
+### Stage 8 — Polish / edge-case hardening `[antigravity]`
+1. Branch from latest `main`: `git checkout main && git pull` (if remote used) `&& git checkout -b stage-8`
+2. Per BUILD_PLAN: empty elements, malformed/unclosed HTML, deeply nested spans, CSS
+   shorthand (`font: bold 14px/1.4 sans-serif`), `--theme` CLI override flag.
+3. The nested-list-numbering P1 (Stage 4 review) is a natural fit here if Marcus assigns
+   it — new `numId` + elevated `ilvl` per nested list instead of reusing the parent's
+   `numId` and just incrementing level.
+4. Reuse `convertInline` / `cssColorToHex` / `resolveRunProps`+`BASE_PROPS`; register any
+   new block handler in `BLOCK_HANDLERS` (`src/blocks.js`).
+5. `npm test` + layout PDF via `./scripts/verify.sh fixtures/...` — **actually read the
+   PDF**, not just check it was produced; Stage 7's TOC bug (see note above) only showed
+   up visually, not in XML-presence checks.
+6. Update BUILD_PLAN `[x]` + deviations; rewrite **Current Status** table from git; merge to `main`
+7. Leave tree clean; link Janus review path if one was requested
