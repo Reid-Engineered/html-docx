@@ -24,7 +24,7 @@ ago.
 ---
 
 ## Stage 0 — Scaffold `[either]`
-**Status:** [ ]
+**Status:** [x]
 
 Set up a Node.js project called `html2docx`. Use `docx` (npm — already know
 the API, don't reinvent it) and `node-html-parser` for parsing.
@@ -55,7 +55,7 @@ pdftoppm -jpeg -r 100 output.pdf page
 No implementation yet beyond a stub pipeline that reads HTML and writes an
 empty docx.
 
-**Deviations from plan:**
+**Deviations from plan:** None. Created the project scaffold, initialized npm, installed dependencies, set up stub file structure, and confirmed that the conversion stage runs and produces a valid output.docx. Note that LibreOffice (soffice) and pdftoppm are not yet installed on the host system, so PDF/image rasterization steps in the verification script currently raise expected warnings.
 
 ---
 

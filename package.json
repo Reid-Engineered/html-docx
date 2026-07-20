@@ -1,0 +1,20 @@
+{
+  "name": "html2docx",
+  "version": "1.0.0",
+  "description": "Convert HTML and CSS to native Word documents",
+  "type": "module",
+  "main": "src/convert.js",
+  "bin": {
+    "html2docx": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "docx": "^9.7.1",
+    "node-html-parser": "^9.0.0"
+  }
+}
