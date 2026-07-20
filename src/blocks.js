@@ -1,5 +1,6 @@
 import { Paragraph, TextRun, HeadingLevel, BorderStyle, ShadingType } from 'docx';
 import { convertInline, resolveRunProps, BASE_PROPS } from './inline.js';
+import { convertList } from './lists.js';
 
 const HEADING_LEVELS = {
   h1: HeadingLevel.HEADING_1,
@@ -25,6 +26,21 @@ const PRE_FONT = 'Courier New';
 const PRE_SHADING_FILL = 'F5F5F5';
 
 /**
+ * Applies list left indentation to paragraph options if inside a list context.
+ * @param {Object} paragraphProps
+ * @param {Object} options
+ * @returns {Object}
+ */
+function applyListIndent(paragraphProps, options) {
+  if (options && options.currentListLevel !== undefined) {
+    paragraphProps.indent = paragraphProps.indent || {};
+    // Indent by (level + 1) * 0.5in
+    paragraphProps.indent.left = (options.currentListLevel + 1) * 720;
+  }
+  return paragraphProps;
+}
+
+/**
  * A lone text node directly inside a block element (e.g. `<h1>Title</h1>`,
  * no wrapping `<span>`) has no `computedStyle` of its own to resolve color/
  * size/weight from. Resolve the block element's own tag+CSS formatting
@@ -43,25 +59,31 @@ function collectInlineChildren(node) {
   return runs;
 }
 
-function convertHeading(node, tagName) {
-  return [new Paragraph({
+function convertHeading(node, tagName, options = {}) {
+  const props = {
     heading: HEADING_LEVELS[tagName],
     children: collectInlineChildren(node)
-  })];
+  };
+  return [new Paragraph(applyListIndent(props, options))];
 }
 
-function convertParagraph(node) {
-  return [new Paragraph({ children: collectInlineChildren(node) })];
+function convertParagraph(node, options = {}) {
+  const props = { children: collectInlineChildren(node) };
+  return [new Paragraph(applyListIndent(props, options))];
 }
 
-function convertBlockquote(node) {
-  return [new Paragraph({
+function convertBlockquote(node, options = {}) {
+  const props = {
     children: collectInlineChildren(node),
     indent: { left: BLOCKQUOTE_INDENT_DXA },
     border: {
       left: { style: BorderStyle.SINGLE, size: 6, color: BLOCKQUOTE_BORDER_COLOR, space: 8 }
     }
-  })];
+  };
+  if (options && options.currentListLevel !== undefined) {
+    props.indent.left += (options.currentListLevel + 1) * 720;
+  }
+  return [new Paragraph(props)];
 }
 
 /**
@@ -80,7 +102,7 @@ function getRawText(node) {
   return text;
 }
 
-function convertPre(node) {
+function convertPre(node, options = {}) {
   let raw = getRawText(node);
   if (raw.startsWith('\n')) raw = raw.slice(1); // browsers drop the newline right after <pre>
   if (raw.endsWith('\n')) raw = raw.slice(0, -1);
@@ -92,30 +114,35 @@ function convertPre(node) {
     if (line.length > 0) children.push(new TextRun({ text: line, font: PRE_FONT }));
   });
 
-  return [new Paragraph({
+  const props = {
     children,
     shading: { fill: PRE_SHADING_FILL, type: ShadingType.CLEAR, color: 'auto' }
-  })];
+  };
+
+  return [new Paragraph(applyListIndent(props, options))];
 }
 
-function convertHr() {
-  return [new Paragraph({
+function convertHr(node, options = {}) {
+  const props = {
     border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RULE_COLOR } }
-  })];
+  };
+  return [new Paragraph(applyListIndent(props, options))];
 }
 
 const BLOCK_HANDLERS = {
   p: convertParagraph,
   blockquote: convertBlockquote,
   pre: convertPre,
-  hr: convertHr
+  hr: convertHr,
+  ul: convertList,
+  ol: convertList
 };
 
 /**
  * Converts a block-level HTML element (or a container of them) into docx
  * block components. Generic containers (div/section/body/...) are
- * flattened by recursing into their children. Lists/tables/images
- * (`ul`/`ol`/`table`/`img`) aren't handled yet — Stages 4-6 — and are
+ * flattened by recursing into their children. Tables/images
+ * (`table`/`img`) aren't handled yet — Stages 5-6 — and are
  * silently skipped rather than guessed at here.
  * @param {import('node-html-parser').HTMLElement} node
  * @param {Object} options
@@ -124,12 +151,19 @@ const BLOCK_HANDLERS = {
 export function convertBlock(node, options = {}) {
   if (!node) return [];
 
+  // Register convertBlock on options to break circular dependency with convertList
+  if (!options.convertBlock) {
+    options.convertBlock = convertBlock;
+  }
+
   if (node.nodeType === 3) {
     const text = node.text.trim();
     // node-html-parser surfaces a leading <!DOCTYPE ...> as a plain text
     // node rather than a distinct node type -- it's markup, not content.
     if (!text || /^<!doctype/i.test(text)) return [];
-    return [new Paragraph({ children: convertInline(node) })];
+    
+    const props = { children: convertInline(node) };
+    return [new Paragraph(applyListIndent(props, options))];
   }
 
   if (node.nodeType !== 1) return [];
@@ -137,10 +171,10 @@ export function convertBlock(node, options = {}) {
   const tagName = node.tagName ? node.tagName.toLowerCase() : '';
   if (SKIPPED_TAGS.has(tagName)) return [];
 
-  if (HEADING_LEVELS[tagName]) return convertHeading(node, tagName);
+  if (HEADING_LEVELS[tagName]) return convertHeading(node, tagName, options);
 
   const handler = BLOCK_HANDLERS[tagName];
-  if (handler) return handler(node);
+  if (handler) return handler(node, options);
 
   if (BLOCK_CONTAINER_TAGS.has(tagName) || tagName === '') {
     const blocks = [];

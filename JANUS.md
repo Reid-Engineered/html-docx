@@ -83,7 +83,7 @@ Janus advice is **normative for process and host facts**. On pure product/API ta
 | [docs/JANUS_REVIEW.md](./docs/JANUS_REVIEW.md) | Standing third-source review (problems, ideas) |
 | [docs/REFERENCE.md](./docs/REFERENCE.md) | DevDocs, docx, CSS specs |
 | [docs/VERIFY.md](./docs/VERIFY.md) | LibreOffice / pdftoppm host reality |
-| `docs/reviews/YYYY-MM-DD-*.md` | Optional dated review notes after later passes |
+| [docs/reviews/](./docs/reviews/) | Dated stage reviews (e.g. Stage 3 accept) |
 
 ---
 

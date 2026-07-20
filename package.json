@@ -8,7 +8,7 @@
     "html2docx": "./bin/cli.js"
   },
   "scripts": {
-    "test": "node test/style.test.js && node test/inline.test.js && node test/blocks.test.js"
+    "test": "node test/style.test.js && node test/inline.test.js && node test/blocks.test.js && node test/lists.test.js"
   },
   "keywords": [],
   "author": "",

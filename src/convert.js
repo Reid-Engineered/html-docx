@@ -15,16 +15,31 @@ export async function convertHtmlToDocx(htmlContent, options = {}) {
   // Apply CSS cascade styling engine to DOM
   applyStylesToTree(root);
 
-  const blocks = convertBlock(root);
+  // Initialize conversion options context to track lists
+  const convertOptions = {
+    numberingConfigs: [],
+    listCounter: 1
+  };
+
+  const blocks = convertBlock(root, convertOptions);
   // A section needs at least one block-level child to be a valid document.
   const children = blocks.length > 0 ? blocks : [new Paragraph({})];
 
-  const doc = new Document({
+  const docConfig = {
     sections: [{
       properties: {},
       children
     }]
-  });
+  };
+
+  // If list elements registered numbering configurations, attach them to the document
+  if (convertOptions.numberingConfigs.length > 0) {
+    docConfig.numbering = {
+      config: convertOptions.numberingConfigs
+    };
+  }
+
+  const doc = new Document(docConfig);
 
   return await Packer.toBuffer(doc);
 }
