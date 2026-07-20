@@ -16,7 +16,7 @@
 | **Working tree** | run `git status -sb` — clean before starting Stage 8 |
 | **origin** | run `git status -sb` (likely ahead; push optional) |
 | **Stages complete on `main`** | 0–7 (CLI + verify: manual arg parsing, file/dir/URL input, `-f docx\|odt`, `--outdir`, `--toc`, `--reference`, always-verify) |
-| **Janus accepts** | Stages 3–6 — `docs/reviews/2026-07-20-stage-*.md` (Stage 7 not yet reviewed — ask Marcus to pull Janus in if a third-source accept is wanted) |
+| **Janus accepts** | Stages 3–7 — `docs/reviews/2026-07-20-stage-*.md` |
 | **Next stage** | **8 Polish / edge-case hardening** `[antigravity]` |
 | **Open P1 debt** | Nested list numbering (Stage 4) — leave unless assigned |
 | **Open P2 (images)** | No local relative `src=` paths; 4:3 aspect fallback |

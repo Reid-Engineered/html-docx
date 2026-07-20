@@ -344,6 +344,12 @@ URL input via a local HTTP server, and error paths), run with
 `--no-verify` to stay host-independent in CI; the always-on verify default
 itself is exercised separately via manual LibreOffice runs per DoD.
 
+**Janus review (2026-07-20):** ACCEPT — full flag surface, TOC LO
+`cachedEntries` fix verified in PDF (heading lines + leaders), odt/batch
+smoke OK. Soft-fail verify is accepted as CLI product choice; stage DoD
+still requires hard PDF when reviewing layout. See
+`docs/reviews/2026-07-20-stage-7.md`.
+
 ---
 
 ## Stage 8 — Polish / edge-case hardening `[antigravity]`
