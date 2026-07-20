@@ -7,11 +7,15 @@ pandoc's generic pass-through. Pixel-perfect fidelity isn't the goal — that's
 a PDF problem, not a docx problem — but the styling that *can* survive a flow
 document (colors, weights, structure, spacing) should survive.
 
-**Owners key:** `[claude-code]` · `[antigravity]` · `[either]`
-Whichever tool starts a stage owns it start to finish — never split one
-stage across both tools mid-stream.
+**Owners key:** `[claude-code]` · `[antigravity]` · `[either]` · `[janus]`
+Whichever **implementer** starts a stage owns it start to finish — never split one
+stage across implementers mid-stream.
 
-Both tools: **read this file before starting a session, and update it
+**`[janus]`** is the third source of truth (advisor / host verify / docs) — not a
+default feature owner. All agents: read **[JANUS.md](./JANUS.md)** at session
+start. Standing review: [docs/JANUS_REVIEW.md](./docs/JANUS_REVIEW.md).
+
+Implementers **and** Janus: **read this file before starting a session, and update it
 immediately after finishing a stage** (status + any deviations from plan).
 Treat this file as ground truth over whatever a chat prompt said three days
 ago.
@@ -87,7 +91,7 @@ cases, inheritance quirks) — good fit for fast exploratory cycles.
 ---
 
 ## Stage 2 — Inline run formatting `[claude-code]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/inline.js`: given an inline-level DOM node and its computed
 style (from Stage 1), produce docx `TextRun` / `ExternalHyperlink` objects.
@@ -112,7 +116,23 @@ Conversions:
 Test against fixtures with mixed/nested inline formatting (e.g. bold inside
 a link inside a color-styled span).
 
-**Deviations from plan:**
+**Deviations from plan:** Added `src/color.js` (not in the original file
+list) as a shared CSS-color-to-hex utility — handles hex/`rgb()`/`rgba()`/
+147 named CSS colors — since blocks.js (Stage 3, heading colors) and
+tables.js (Stage 5, cell shading) will need the same conversion; keeping it
+in inline.js would mean duplicating it later. Tag-semantic formatting
+(`<strong>`, `<em>`, `<u>`, `<s>`/`<strike>`/`<del>`, `<code>`) is combined
+with CSS-resolved properties via OR-accumulation down the tree (either can
+turn a property on; CSS doesn't turn tag-implied bold back off) — simplest
+model that satisfies nested/mixed-formatting fixtures. Hyperlink runs get
+`style: "Hyperlink"` (docx's built-in character style, blue+underline) so
+links look like links by default, while any explicit CSS color/weight on
+the node still applies as direct formatting on top, correctly overriding
+the style default (matches Word's direct-formatting-wins behavior). Tests
+(`test/inline.test.js`) render real docx output via `Packer.toBuffer` and
+inspect the actual `word/document.xml` (unzipped with `jszip`, added as a
+devDependency) rather than internal object shape, since docx doesn't expose
+a way to read options back off a built `TextRun`/`ExternalHyperlink`.
 
 ---
 
