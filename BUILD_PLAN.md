@@ -60,7 +60,7 @@ empty docx.
 ---
 
 ## Stage 1 — CSS cascade engine `[antigravity]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/style.js`: parse any `<style>` blocks into selector -> property
 rules. Support tag, `.class`, `#id`, and combined `tag.class` selectors with
@@ -82,7 +82,7 @@ Test fixtures needed:
 This is the stage most about rapid iteration/discovery (specificity edge
 cases, inheritance quirks) — good fit for fast exploratory cycles.
 
-**Deviations from plan:**
+**Deviations from plan:** None. All requested selectors, specificity, inheritance, style-stack walking, and em/rem/percentage sizing calculations are fully implemented and verified via unit tests and fixtures.
 
 ---
 
