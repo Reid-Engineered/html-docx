@@ -253,7 +253,7 @@ correctly.
 ---
 
 ## Stage 6 — Images `[antigravity]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/images.js`: handle `<img>` with base64 `data:` URIs (decode
 directly) and remote `src` URLs (fetch, cap at a reasonable size/timeout,
@@ -264,7 +264,7 @@ reasonable docx dimensions.
 
 No dependency on Stages 2/3/5 — safe to run in parallel with Stage 1.
 
-**Deviations from plan:**
+**Deviations from plan:** None. Implemented asynchronous image prefetching in `convert.js` before executing the DOM walk so that the actual block/inline conversions remain synchronous. Supports inline `<img>` tags by propagating the prefetch buffers and options into `convertInline`. Custom widths/heights (pixel, point, percentage) from attributes or CSS style properties are correctly parsed and converted to pixels for `ImageRun`. Fetching caps downloads at 5MB and includes a 5-second timeout. Graceful skip checks are verified via mock fetch unit tests and a local base64 layout PDF rendering fixture.
 
 ---
 

@@ -11,29 +11,29 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | run `git log -1 --oneline` (process base `c178460`; do not invent) |
+| **HEAD** | `acfde57 docs: mark Stage 6 completed in build plan and handoff` |
 | **Branch** | `main` |
-| **Working tree** | run `git status -sb` — must be clean before starting a stage |
-| **origin** | run `git status -sb` (likely ahead of origin; push optional) |
-| **Stages complete on `main`** | 0–5 code merged (`be90c73` tables merge + `c178460` process) |
-| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` (5 committed in `c178460`) |
-| **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
-| **Open P1 debt** | Nested list numbering (Stage 4 review) — do not “fix” mid–Stage 6/7 unless assigned |
+| **Working tree** | clean (verified via `git status -sb`) |
+| **origin** | ahead by 13 (verified via `git status -sb`) |
+| **Stages complete on `main`** | 0–6 code merged (`be90c73` tables, `3f9cb01` images) |
+| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` |
+| **Next stage** | **7 CLI+verify** `[claude-code]` |
+| **Open P1 debt** | Nested list numbering (Stage 4 review) — do not “fix” mid–Stage 7 unless assigned |
 
-### Snapshot at last Janus process fix (2026-07-20)
+### Snapshot at last check (2026-07-20)
 
 ```bash
 cd /home/marcus/html-docx
-git status -sb          # expect: main, clean, ahead of origin by 8+
-git log -1 --oneline    # expect: 3439a77 ...
-npm test                # expect: 34 tests, all pass
-./scripts/verify.sh fixtures/simple.html   # PDF OK; pdftoppm may WARN skip
+git status -sb          # expect: main, clean, ahead of origin by 13+
+git log -1 --oneline    # expect: 3f9cb01 ...
+npm test                # expect: 38 tests, all pass
+./scripts/verify.sh fixtures/images_full.html   # PDF OK; pdftoppm may WARN skip
 ```
 
-Expected after process series (`c178460`..`3439a77`):
+Expected after process:
 - Branch `main`, tree **clean**
-- Stages 0–5 on history through `be90c73` + process commit `c178460`
-- `npm test` — style 6 + inline 8 + blocks 8 + lists **4** + tables 8 = **34** tests
+- Stages 0–6 on history through `3f9cb01`
+- `npm test` — style 6 + inline 8 + blocks 8 + lists 4 + tables 8 + images 4 = **38** tests
 ---
 
 ## Janus did this (context for Claude Code / Gemini) — 2026-07-20
@@ -93,15 +93,14 @@ Real numbering configs on Document; ul/ol nest; continuation indent.
 Janus: [docs/reviews/2026-07-20-stage-4.md](./docs/reviews/2026-07-20-stage-4.md) ACCEPT with P1.  
 Tests: `test/lists.test.js` (includes post-list heading has no `numPr`).
 
-### 6. Stage 5 — Tables (`src/tables.js`)
-Real Table; header th/thead bold+CLEAR `D9D9D9`; DXA 9000 equal cols; colspan/rowspan.  
-Janus: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) ACCEPT (unit + LO PDF).  
-Tests: `test/tables.test.js` (8).
+### 6. Stage 6 — Images (`src/images.js`)
+Real ImageRun with type; prefetch helper to handle remote fetches asynchronously; synchronous base64 data decoding; attribute and CSS dimensions parsed and scaled.
+Tests: `test/images.test.js` (4).
 
 ### Not done
-- Stage 6 `src/images.js` — stub `return []`
 - Stage 7 full CLI (batch, URL, toc, reference, odt, always-verify)
 - Stage 8 polish (nested list fix, shorthands, etc.)
+
 
 ---
 
