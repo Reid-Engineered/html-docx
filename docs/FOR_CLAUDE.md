@@ -2,7 +2,7 @@
 
 **Author:** Janus (Hermes profile `janus`), 2026-07-20  
 **Repo:** `/home/marcus/html-docx`  
-**Commit:** `c178460` on `main`
+**Tip commit:** `3439a77 docs: align HANDOFF HEAD with FOR_CLAUDE commit` (process series from `c178460`)
 
 Marcus told Janus to fix process drift and leave you context. This is that context.
 

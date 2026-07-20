@@ -11,10 +11,10 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | `93bf2a3 docs: stamp HANDOFF git snapshot + FOR_CLAUDE context pack` |
+| **HEAD** | `3439a77 docs: align HANDOFF HEAD with FOR_CLAUDE commit` |
 | **Branch** | `main` |
 | **Working tree** | clean (verify: `git status -sb`) |
-| **origin** | **ahead of `origin/main` by 9** — push optional |
+| **origin** | **ahead of `origin/main` by 10** — push optional |
 | **Stages complete on `main`** | 0–5 code merged (`be90c73` tables merge + `c178460` process) |
 | **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` (5 committed in `c178460`) |
 | **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
@@ -25,12 +25,12 @@
 ```bash
 cd /home/marcus/html-docx
 git status -sb          # expect: main, clean, ahead of origin by 8+
-git log -1 --oneline    # expect: c178460 chore: process DoD...
+git log -1 --oneline    # expect: 3439a77 ...
 npm test                # expect: 34 tests, all pass
 ./scripts/verify.sh fixtures/simple.html   # PDF OK; pdftoppm may WARN skip
 ```
 
-Expected after `c178460`:
+Expected after process series (`c178460`..`3439a77`):
 - Branch `main`, tree **clean**
 - Stages 0–5 on history through `be90c73` + process commit `c178460`
 - `npm test` — style 6 + inline 8 + blocks 8 + lists **4** + tables 8 = **34** tests
