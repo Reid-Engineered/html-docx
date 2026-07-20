@@ -200,7 +200,7 @@ Mostly discovery-by-fixture work — good fit for fast iteration.
 ---
 
 ## Stage 5 — Tables `[claude-code]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/tables.js`: convert `table`/`thead`/`tbody`/`tr`/`th`/`td`
 into a real docx `Table`.
@@ -214,7 +214,41 @@ into a real docx `Table`.
 
 Test fixtures: shaded-header table, table with merged cells.
 
-**Deviations from plan:**
+**Deviations from plan:** `thead`/`tbody`/`tfoot` wrapping is flattened —
+`convertTable` finds all descendant `<tr>` via `querySelectorAll` rather
+than walking section-by-section; a row counts as a header row if it's
+inside `<thead>`, and a cell counts as a header cell if it's a `<th>`
+(either triggers bold+shaded, matching "header row (or th cells)" from the
+spec literally). `rowspan`/`colspan` handling relies on docx's own
+auto-generated `vMerge` continuation cells (confirmed in `docx`'s source:
+setting `rowSpan` on the origin `TableCell` makes the `Table` constructor
+inject the `CONTINUE` cells into subsequent rows itself) — `tables.js` only
+needs to track, using the standard HTML table layout algorithm, which
+columns are already occupied by an ongoing rowspan so it doesn't also
+place one of the HTML's own `<td>`s there. Column count is inferred from
+the same tracking walk (two passes: one to size `columnWidths`, one to
+build cells) rather than requiring uniform `<td>` counts per row. Total
+table width is a fixed 9000 DXA (~6.25in, typical content width) split
+evenly across columns, with any remainder DXA absorbed by the last column
+so the sum always matches exactly (verified in
+`testColumnWidthsSumToTableWidth`). Each table cell's content collapses to
+a **single paragraph** (reusing `resolveRunProps`/`BASE_PROPS` from
+`inline.js`, same seeding pattern as Stage 3's headings, plus `bold: true`
+forced for header cells) — nested block content inside a cell (e.g.
+`<td><p>a</p><p>b</p></td>`) is not split into multiple paragraphs; out of
+scope per the plan's spec, which doesn't mention block content in cells.
+Table borders are explicit `BorderStyle.SINGLE` on all edges + inside
+gridlines (docx's default empty `borders: {}` doesn't reliably render a
+visible grid) rather than per-cell borders, since the plan's "real table
+borders" goal needs *some* explicit border and table-level covers every
+cell uniformly with less code. Wired into `blocks.js`'s existing
+`BLOCK_HANDLERS` dispatch (which Stage 4/lists had already extended with
+an `options.convertBlock` circular-dependency hook by the time this
+landed) — `table` needed no changes to that machinery, just a new entry.
+Visually verified via LibreOffice (Windows binary through WSL, see Stage 3
+notes): shaded/bold header, unshaded data rows, nested `<strong>` inside a
+cell, rowspan merge (no duplicated text), and colspan merge all render
+correctly.
 
 ---
 

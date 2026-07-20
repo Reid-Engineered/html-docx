@@ -1,6 +1,7 @@
 import { Paragraph, TextRun, HeadingLevel, BorderStyle, ShadingType } from 'docx';
 import { convertInline, resolveRunProps, BASE_PROPS } from './inline.js';
 import { convertList } from './lists.js';
+import { convertTable } from './tables.js';
 
 const HEADING_LEVELS = {
   h1: HeadingLevel.HEADING_1,
@@ -135,15 +136,16 @@ const BLOCK_HANDLERS = {
   pre: convertPre,
   hr: convertHr,
   ul: convertList,
-  ol: convertList
+  ol: convertList,
+  table: convertTable
 };
 
 /**
  * Converts a block-level HTML element (or a container of them) into docx
  * block components. Generic containers (div/section/body/...) are
- * flattened by recursing into their children. Tables/images
- * (`table`/`img`) aren't handled yet — Stages 5-6 — and are
- * silently skipped rather than guessed at here.
+ * flattened by recursing into their children. Images (`img`) aren't
+ * handled yet — Stage 6 — and are silently skipped rather than guessed at
+ * here.
  * @param {import('node-html-parser').HTMLElement} node
  * @param {Object} options
  * @returns {Array<any>}

@@ -9,8 +9,9 @@
   - Stage 2 (Inline run formatting) `[x]`
   - Stage 3 (Block-level structure) `[x]`
   - Stage 4 (Lists) `[x]`
-- **Active Branch:** `main` (clean state, all Stage 0-4 changes merged)
-- **Next Stage:** **Stage 5 — Tables** (owned by `[claude-code]`) or **Stage 6 — Images** (owned by `[antigravity]`)
+  - Stage 5 (Tables) `[x]`
+- **Active Branch:** `main` (clean state, all Stage 0-5 changes merged)
+- **Next Stage:** **Stage 6 — Images** (owned by `[antigravity]`) or **Stage 7 — CLI + verification loop** (owned by `[claude-code]`) — Stage 7 needs 0-5 wired end-to-end (now true) but doesn't need Stage 6; no ordering constraint between them.
 
 ---
 
@@ -63,17 +64,21 @@
 - **Tests:** [test/lists.test.js](file:///home/marcus/html-docx/test/lists.test.js) & fixture [fixtures/lists_full.html](file:///home/marcus/html-docx/fixtures/lists_full.html). Asserts nested levels, numbering XML config existence, numbering formats, inline styles, and separate list restart numIds. All passing.
 - **Visually verified** via PDF converter tool rendering showing perfect alignment, bullet alternation, decimal formats, and restart numbering.
 
+### 6. Tables Implemented (Stage 5)
+- **File:** [src/tables.js](file:///home/marcus/html-docx/src/tables.js)
+- `convertTable(node, options)`: converts an HTML `<table>` to a real docx `Table`.
+  - `thead`/`tbody`/`tfoot` wrapping is flattened — finds all descendant `<tr>` via `querySelectorAll('tr')` directly rather than walking section-by-section.
+  - A row counts as a header row if it's inside `<thead>`; a cell counts as a header cell if it's a `<th>`. Either triggers bold text + `D9D9D9` shading (`ShadingType.CLEAR`, never `SOLID`).
+  - `colspan`/`rowspan` respected via the standard HTML table layout algorithm (`walkRows()` tracks which columns are still "occupied" by an ongoing rowspan from an earlier row) — **docx auto-generates the `vMerge` CONTINUE cells itself** once you set `rowSpan` on the origin `TableCell` (confirmed in `docx`'s own source), so `tables.js` only needs to avoid placing one of the HTML's own `<td>`s in an already-occupied column, not build the continuation cells by hand.
+  - Table width is fixed at 9000 DXA (~6.25in), split evenly across columns (remainder absorbed by the last column so the sum is always exact) — both `columnWidths` on the `Table` and `width` on every `TableCell` are explicit DXA, never percentage (percentage breaks in Google Docs, per the plan).
+  - Each cell's content is a **single paragraph** — reuses `resolveRunProps`/`BASE_PROPS` from `inline.js` (same pattern as Stage 3 headings) to seed bare cell text, with `bold: true` forced for header cells. Nested block content in a cell (e.g. multiple `<p>`s) is not split into multiple paragraphs — out of scope per the plan.
+  - Explicit `BorderStyle.SINGLE` borders on all table edges + inside gridlines (docx's default empty `borders: {}` option doesn't reliably draw a visible grid).
+  - Registered as `table: convertTable` in `BLOCK_HANDLERS` in `src/blocks.js` — no changes needed to the existing `options.convertBlock`/list-indent machinery from Stage 4.
+- **Tests:** [test/tables.test.js](file:///home/marcus/html-docx/test/tables.test.js) (8 tests) + fixtures [fixtures/table_shaded_header.html](file:///home/marcus/html-docx/fixtures/table_shaded_header.html), [fixtures/table_merged_cells.html](file:///home/marcus/html-docx/fixtures/table_merged_cells.html). All 32 tests across all suites passing (`npm test`).
+- **Visually verified** via LibreOffice (Windows binary through WSL, see Stage 3 notes for the `soffice.exe`/`wslpath -w` approach): shaded+bold header row, unshaded data rows, `<strong>` nested inside a cell, rowspan merge with no duplicated "Q1" text, and colspan merge spanning the full table width all render correctly.
+
 ---
 
 ## Instructions for the next stage owner
 
-### Stage 5 — Tables `[claude-code]`
-1. **Branch out:** `git checkout -b stage-5` from `main`.
-2. **Implementation target:** Implement `src/tables.js`. Convert `table`/`thead`/`tbody`/`tr`/`th`/`td` into a real docx `Table`.
-   - Header row or `th` cells get bold text and shaded fill (`ShadingType.CLEAR`, *never* `SOLID` fill).
-   - Set explicit `columnWidths` on the table and `width` on every cell in DXA (summing to the table width).
-   - Respect `colspan`/`rowspan`.
-3. **Register block handler:** Add `table: convertTable` to `BLOCK_HANDLERS` in `src/blocks.js`.
-4. **Reuse utilities:** Use `convertInline` for cell contents, and `cssColorToHex` (`src/color.js`) for shading colors.
-5. **Tests:** Create `test/tables.test.js` and a tables fixture in `fixtures/`, then add tests to the `npm test` script.
-6. **Update documentation:** Mark Stage 5 `[x]` in `BUILD_PLAN.md` and update this `HANDOFF.md`.
+Both Stage 6 (Images, `[antigravity]`) and Stage 7 (CLI + verification loop, `[claude-code]`) can proceed now — see `BUILD_PLAN.md` for each stage's full spec. Reuse `convertInline`/`cssColorToHex`/`resolveRunProps`+`BASE_PROPS` rather than reimplementing; register any new block handler in `BLOCK_HANDLERS` in `src/blocks.js`. Update `BUILD_PLAN.md` + this file and merge to `main` after `npm test` and a visual `scripts/verify.sh` pass (LibreOffice via `soffice.exe`/`wslpath -w` if `soffice` still isn't on the WSL PATH, per Stage 3's notes above) when done.
