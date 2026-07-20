@@ -1,6 +1,7 @@
 import { Paragraph, TextRun, HeadingLevel, BorderStyle, ShadingType } from 'docx';
 import { convertInline, resolveRunProps, BASE_PROPS } from './inline.js';
 import { convertList } from './lists.js';
+import { convertImage } from './images.js';
 import { convertTable } from './tables.js';
 
 const HEADING_LEVELS = {
@@ -130,6 +131,12 @@ function convertHr(node, options = {}) {
   return [new Paragraph(applyListIndent(props, options))];
 }
 
+function convertBlockImage(node, options = {}) {
+  const runs = convertImage(node, options);
+  if (runs.length === 0) return [];
+  return [new Paragraph({ children: runs })];
+}
+
 const BLOCK_HANDLERS = {
   p: convertParagraph,
   blockquote: convertBlockquote,
@@ -137,6 +144,7 @@ const BLOCK_HANDLERS = {
   hr: convertHr,
   ul: convertList,
   ol: convertList,
+  img: convertBlockImage,
   table: convertTable
 };
 

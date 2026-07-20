@@ -1,5 +1,6 @@
 import { TextRun, ExternalHyperlink, ShadingType } from 'docx';
 import { cssColorToHex } from './color.js';
+import { convertImage } from './images.js';
 
 const BOLD_TAGS = new Set(['b', 'strong']);
 const ITALIC_TAGS = new Set(['i', 'em']);
@@ -151,11 +152,15 @@ function buildRunOptions(props, text) {
  * @param {Object} inherited
  * @returns {Array<TextRun|ExternalHyperlink>}
  */
-function collectElementRuns(node, computedStyle, inherited) {
+function collectElementRuns(node, computedStyle, inherited, options = {}) {
   const tagName = node.tagName ? node.tagName.toLowerCase() : '';
 
   if (tagName === 'br') {
     return [new TextRun({ break: 1 })];
+  }
+
+  if (tagName === 'img') {
+    return convertImage(node, options);
   }
 
   const props = resolveRunProps(node, computedStyle, inherited);
@@ -165,7 +170,7 @@ function collectElementRuns(node, computedStyle, inherited) {
     const childProps = href ? { ...props, insideHyperlink: true } : props;
     const children = [];
     for (const child of node.childNodes) {
-      children.push(...collectRuns(child, childProps));
+      children.push(...collectRuns(child, childProps, options));
     }
     if (!href) return children;
     return [new ExternalHyperlink({ link: href, children })];
@@ -173,7 +178,7 @@ function collectElementRuns(node, computedStyle, inherited) {
 
   const runs = [];
   for (const child of node.childNodes) {
-    runs.push(...collectRuns(child, props));
+    runs.push(...collectRuns(child, props, options));
   }
   return runs;
 }
@@ -184,9 +189,10 @@ function collectElementRuns(node, computedStyle, inherited) {
  * docx TextRun / ExternalHyperlink objects.
  * @param {import('node-html-parser').HTMLElement} node
  * @param {Object} inherited
+ * @param {Object} options
  * @returns {Array<TextRun|ExternalHyperlink>}
  */
-function collectRuns(node, inherited) {
+function collectRuns(node, inherited, options = {}) {
   if (node.nodeType === 3) {
     const text = node.text.replace(/\s+/g, ' ');
     if (text === '') return [];
@@ -195,7 +201,7 @@ function collectRuns(node, inherited) {
 
   if (node.nodeType !== 1) return [];
 
-  return collectElementRuns(node, node.computedStyle || {}, inherited);
+  return collectElementRuns(node, node.computedStyle || {}, inherited, options);
 }
 
 /**
@@ -216,11 +222,11 @@ export function convertInline(node, computedStyle, options = {}) {
   const inherited = options.inherited || BASE_PROPS;
 
   if (node.nodeType === 3) {
-    return collectRuns(node, inherited);
+    return collectRuns(node, inherited, options);
   }
 
   if (node.nodeType !== 1) return [];
 
   const style = computedStyle !== undefined ? computedStyle : (node.computedStyle || {});
-  return collectElementRuns(node, style, inherited);
+  return collectElementRuns(node, style, inherited, options);
 }
