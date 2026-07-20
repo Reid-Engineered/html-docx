@@ -280,7 +280,7 @@ regression `testInlineRemoteImageUsesPrefetchBuffers`. See
 ---
 
 ## Stage 7 — CLI + verification loop `[claude-code]`
-**Status:** [ ]
+**Status:** [x]
 
 Wire everything into `bin/cli.js`. Same interface as the earlier
 `html2doc.py` prototype:
@@ -296,7 +296,53 @@ After conversion, always run the LibreOffice-headless -> PDF -> pdftoppm
 verify step and report output image paths for visual confirmation before
 trusting the result.
 
-**Deviations from plan:**
+**Deviations from plan:** `bin/cli.js` rewritten with manual arg parsing
+(no new dependency). Directory input requires `--outdir` (ambiguous
+otherwise); a single file/URL input can use `--outdir` too if `-o` is
+omitted, output name derived from the input basename. `-f odt` shells out
+to the already-installed `pandoc` on a temp `.docx` (cleaned up after);
+errors clearly if `pandoc` is missing rather than failing silently.
+`--reference TEMPLATE` unzips the template `.docx` (via `jszip`, promoted
+from `devDependencies` to `dependencies` since it's now used at runtime,
+not just in tests) and passes its raw `word/styles.xml` through to docx's
+`externalStyles` — confirmed via `jszip`-diffed output that the reference
+template's style content actually lands in the generated file, and that
+LibreOffice opens/converts the result cleanly. `--toc` inserts a real
+`TableOfContents` field (`headingStyleRange: "1-6"`, `updateFields: true`
+in document settings so Word refreshes it on open) — **found and fixed a
+real bug via the LibreOffice PDF verify step**: LibreOffice's headless
+`--convert-to pdf` never refreshes field-based TOCs (only Word does, on
+open), so the field rendered as a blank gap in the PDF. Fixed by also
+populating `cachedEntries` (title + heading level, collected from the DOM
+in document order) so the TOC has real static content in any viewer that
+doesn't refresh fields — Word still recomputes it (including page
+numbers) from the field on open. Regression-tested structurally
+(`testTocFlagInsertsRealTocField` asserts cached entry text inside the
+`<w:sdt>`) since the visual defect wouldn't show up in an XML-presence
+check alone. **Always-verify default implemented as a soft-fail**, not
+hard-required: the built-in `verifyOutput()` (`src/verify.js`) always runs
+LibreOffice PDF conversion after every write and prints the PDF/JPEG
+paths, but a failure (e.g. no LibreOffice on the host at all) only warns —
+it doesn't abort the whole command or exit non-zero, since forcing every
+`html2docx` invocation to require a working LibreOffice install felt wrong
+for a general-purpose CLI (that bar makes more sense for *this repo's own*
+dev-loop DoD, which already has `scripts/verify.sh`). `--no-verify` opts
+out entirely for batch-mode throughput; `--strict-raster`
+(or `STRICT_RASTER=1`, same convention as `scripts/verify.sh`) makes a
+missing `pdftoppm` specifically fail rather than warn. `src/verify.js` is
+a new shared module (reused by nothing else yet, but factored out of
+`bin/cli.js` rather than inlined so it's independently testable and so
+`scripts/verify.sh` could be pointed at it later instead of duplicating
+the LibreOffice-wrapper invocation). Visually verified via the CLI's own
+default verify path: single-file conversion, `--toc` (confirmed the
+cached-entries fix — TOC now shows "Report Title"/"Section" with dot
+leaders instead of a blank gap), and `--reference` (confirmed LibreOffice
+opens/converts the merged-styles output without error). 15 new tests in
+`test/cli.test.js` (pure-function unit tests for arg parsing/path
+resolution + spawned end-to-end tests for every flag, directory batch,
+URL input via a local HTTP server, and error paths), run with
+`--no-verify` to stay host-independent in CI; the always-on verify default
+itself is exercised separately via manual LibreOffice runs per DoD.
 
 ---
 
