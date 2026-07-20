@@ -11,10 +11,10 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | `c178460 chore: process DoD, Stage 5 Janus accept, verify soft-fail` |
+| **HEAD** | `93bf2a3 docs: stamp HANDOFF git snapshot + FOR_CLAUDE context pack` |
 | **Branch** | `main` |
-| **Working tree** | clean after that commit (re-check with `git status -sb`) |
-| **origin** | **ahead of `origin/main` by 8** — push optional |
+| **Working tree** | clean (verify: `git status -sb`) |
+| **origin** | **ahead of `origin/main` by 9** — push optional |
 | **Stages complete on `main`** | 0–5 code merged (`be90c73` tables merge + `c178460` process) |
 | **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` (5 committed in `c178460`) |
 | **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
