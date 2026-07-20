@@ -46,8 +46,8 @@ function collectHeadingEntries(root) {
 export async function convertHtmlToDocx(htmlContent, options = {}) {
   const root = parseHtml(htmlContent);
 
-  // Apply CSS cascade styling engine to DOM
-  applyStylesToTree(root);
+  // Apply CSS cascade styling engine to DOM, passing the theme
+  applyStylesToTree(root, '12pt', options.theme);
 
   // Pre-fetch all remote images in parallel
   const imageBuffers = await prefetchImages(root);
@@ -81,6 +81,12 @@ export async function convertHtmlToDocx(htmlContent, options = {}) {
       children
     }]
   };
+
+  if (options.theme && options.theme.toLowerCase() === 'dark') {
+    docConfig.background = {
+      color: '1E1E1E'
+    };
+  }
 
   // If list elements registered numbering configurations, attach them to the document
   if (convertOptions.numberingConfigs.length > 0) {

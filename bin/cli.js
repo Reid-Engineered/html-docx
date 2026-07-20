@@ -20,6 +20,7 @@ Options:
   --outdir <dir>           Output directory (required for a directory input;
                             optional destination for a single file/URL)
   --toc                    Insert a Table of Contents built from h1-h6
+  --theme <theme>          Force a theme override (modern, classic, dark, creative)
   --reference <template>   Merge paragraph/character styles from a
                             reference .docx (pandoc reference-doc pattern)
   --no-verify              Skip the post-conversion LibreOffice PDF check
@@ -39,6 +40,7 @@ export function parseArgs(argv) {
     format: 'docx',
     outdir: null,
     toc: false,
+    theme: null,
     reference: null,
     verify: true,
     strictRaster: false,
@@ -70,6 +72,9 @@ export function parseArgs(argv) {
         break;
       case '--strict-raster':
         options.strictRaster = true;
+        break;
+      case '--theme':
+        options.theme = argv[++i];
         break;
       case '-h':
       case '--help':
@@ -155,8 +160,8 @@ async function convertBufferToOdt(docxBuffer, outputPath) {
   }
 }
 
-async function convertOne(htmlContent, outputPath, { toc, referenceStylesXml, format }) {
-  const docxBuffer = await convertHtmlToDocx(htmlContent, { toc, referenceStylesXml });
+async function convertOne(htmlContent, outputPath, { toc, referenceStylesXml, format, theme }) {
+  const docxBuffer = await convertHtmlToDocx(htmlContent, { toc, referenceStylesXml, theme });
   fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
 
   if (format === 'odt') {
@@ -250,7 +255,8 @@ async function main() {
       await convertOne(job.html, job.outputPath, {
         toc: options.toc,
         referenceStylesXml,
-        format: options.format
+        format: options.format,
+        theme: options.theme
       });
       console.log(`  OK: ${job.outputPath}`);
 

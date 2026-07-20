@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .shorthand-test {
+      font: italic bold 16px/1.5 Arial, Helvetica, sans-serif;
+      background: #e0f0ff;
+      color: #003366;
+    }
+  </style>
+</head>
+<body>
+  <h1>Polish and Edge Cases Verification</h1>
+
+  <h2>1. Empty Elements</h2>
+  <div></div>
+  <p></p>
+  <p>Empty div and paragraph above this line.</p>
+
+  <h2>2. Malformed HTML Tags</h2>
+  <div><p>Unclosed paragraph element.
+  <p>Unclosed <b>bold text inside paragraph.</p>
+
+  <h2>3. CSS Shorthands</h2>
+  <div class="shorthand-test">
+    This text is styled using font and background CSS shorthands (italic bold 16px Arial with #e0f0ff background).
+  </div>
+
+  <h2>4. Nested Lists & Formatting overrides</h2>
+  <ol>
+    <li>Decimal level 0
+      <ol style="list-style-type: lower-alpha;">
+        <li>Lower alpha level 1
+          <ol style="list-style-type: lower-roman;">
+            <li>Lower roman level 2</li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+    <li>Decimal level 0 item 2
+      <ol>
+        <li>Default nested decimal (level 1) (should be decimal "1.", not letters)</li>
+      </ol>
+    </li>
+  </ol>
+
+</body>
+</html>

@@ -1,49 +1,69 @@
 import { Paragraph, LevelFormat, AlignmentType } from 'docx';
 import { convertInline, resolveRunProps, BASE_PROPS } from './inline.js';
 
-// Alternating templates for bullet lists (ul)
-const BULLET_LEVELS_TEMPLATE = [
-  { level: 0, format: LevelFormat.BULLET, text: '•' },
-  { level: 1, format: LevelFormat.BULLET, text: 'o' },
-  { level: 2, format: LevelFormat.BULLET, text: '▪' },
-  { level: 3, format: LevelFormat.BULLET, text: '•' },
-  { level: 4, format: LevelFormat.BULLET, text: 'o' },
-  { level: 5, format: LevelFormat.BULLET, text: '▪' },
-  { level: 6, format: LevelFormat.BULLET, text: '•' },
-  { level: 7, format: LevelFormat.BULLET, text: 'o' },
-  { level: 8, format: LevelFormat.BULLET, text: '▪' }
-];
+const LIST_STYLE_MAP = {
+  'decimal': { format: LevelFormat.DECIMAL, suffix: '.' },
+  'decimal-leading-zero': { format: LevelFormat.DECIMAL_ZERO, suffix: '.' },
+  'lower-roman': { format: LevelFormat.LOWER_ROMAN, suffix: '.' },
+  'upper-roman': { format: LevelFormat.UPPER_ROMAN, suffix: '.' },
+  'lower-alpha': { format: LevelFormat.LOWER_LETTER, suffix: '.' },
+  'lower-latin': { format: LevelFormat.LOWER_LETTER, suffix: '.' },
+  'upper-alpha': { format: LevelFormat.UPPER_LETTER, suffix: '.' },
+  'upper-latin': { format: LevelFormat.UPPER_LETTER, suffix: '.' },
+  'disc': { format: LevelFormat.BULLET, text: '•' },
+  'circle': { format: LevelFormat.BULLET, text: 'o' },
+  'square': { format: LevelFormat.BULLET, text: '▪' },
+  'none': { format: LevelFormat.NONE, text: '' }
+};
 
-// Alternating templates for decimal lists (ol)
-const DECIMAL_LEVELS_TEMPLATE = [
-  { level: 0, format: LevelFormat.DECIMAL, text: '%1.' },
-  { level: 1, format: LevelFormat.LOWER_LETTER, text: '%2.' },
-  { level: 2, format: LevelFormat.LOWER_ROMAN, text: '%3.' },
-  { level: 3, format: LevelFormat.DECIMAL, text: '%4.' },
-  { level: 4, format: LevelFormat.LOWER_LETTER, text: '%5.' },
-  { level: 5, format: LevelFormat.LOWER_ROMAN, text: '%6.' },
-  { level: 6, format: LevelFormat.DECIMAL, text: '%7.' },
-  { level: 7, format: LevelFormat.LOWER_LETTER, text: '%8.' },
-  { level: 8, format: LevelFormat.LOWER_ROMAN, text: '%9.' }
-];
+const HTML_TYPE_MAP = {
+  '1': 'decimal',
+  'a': 'lower-alpha',
+  'A': 'upper-alpha',
+  'i': 'lower-roman',
+  'I': 'upper-roman'
+};
 
 /**
  * Helper to generate numbering level configurations with correct indentation.
- * @param {Array<Object>} template 
+ * @param {string} tagName
+ * @param {number} currentLevel
+ * @param {string} styleType
  * @returns {Array<Object>}
  */
-function generateLevelsConfig(template) {
-  return template.map(item => ({
-    level: item.level,
-    format: item.format,
-    text: item.text,
-    alignment: AlignmentType.START,
-    style: {
-      paragraph: {
-        indent: { left: (item.level + 1) * 720, hanging: 360 }
+function generateLevelsConfig(tagName, currentLevel, styleType) {
+  const defaultBulletTexts = ['•', 'o', '▪', '•', 'o', '▪', '•', 'o', '▪'];
+  const defaultDecimalFormats = Array(9).fill(LevelFormat.DECIMAL); // Defaults to decimal numbers at all levels (fixes P1)
+
+  return Array.from({ length: 9 }, (_, l) => {
+    let format = tagName === 'ul' ? LevelFormat.BULLET : defaultDecimalFormats[l];
+    let text = tagName === 'ul' ? defaultBulletTexts[l] : `%${l + 1}.`;
+
+    // Apply the resolved styleType format for the current active nesting level of this list
+    if (l === currentLevel) {
+      const resolved = LIST_STYLE_MAP[styleType];
+      if (resolved) {
+        format = resolved.format;
+        if (resolved.format === LevelFormat.BULLET) {
+          text = resolved.text;
+        } else {
+          text = `%${l + 1}${resolved.suffix || '.'}`;
+        }
       }
     }
-  }));
+
+    return {
+      level: l,
+      format,
+      text,
+      alignment: AlignmentType.START,
+      style: {
+        paragraph: {
+          indent: { left: (l + 1) * 720, hanging: 360 }
+        }
+      }
+    };
+  });
 }
 
 /**
@@ -71,11 +91,20 @@ export function convertList(node, options = {}) {
   // 2. Generate a new unique reference for this list (to handle numbering restart)
   const listRef = `${tagName}-list-ref-${options.listCounter++}`;
 
-  // 3. Register numbering configuration
-  const template = tagName === 'ul' ? BULLET_LEVELS_TEMPLATE : DECIMAL_LEVELS_TEMPLATE;
+  // 3. Resolve list-style-type / type attribute and generate levels configuration
+  let styleType = node.computedStyle && node.computedStyle['list-style-type'];
+  const attrType = node.getAttribute('type');
+  if (!styleType && attrType && HTML_TYPE_MAP[attrType]) {
+    styleType = HTML_TYPE_MAP[attrType];
+  }
+  if (!styleType) {
+    styleType = tagName === 'ul' ? 'disc' : 'decimal';
+  }
+
+  const currentLevel = options.currentListLevel !== undefined ? options.currentListLevel + 1 : 0;
   options.numberingConfigs.push({
     reference: listRef,
-    levels: generateLevelsConfig(template)
+    levels: generateLevelsConfig(tagName, currentLevel, styleType)
   });
 
   // 4. Save parent list state to restore later
