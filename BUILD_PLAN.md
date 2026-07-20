@@ -183,7 +183,7 @@ bottom-border paragraph (not a table) all render correctly in LibreOffice.
 ---
 
 ## Stage 4 — Lists `[antigravity]`
-**Status:** [ ]
+**Status:** [x]
 
 Implement `src/lists.js`: convert `ul`/`ol`, including arbitrary nesting
 depth, into a real docx `numbering` config (`LevelFormat.BULLET` for `ul`,
@@ -195,7 +195,7 @@ Test fixtures: nested mixed `ul`-inside-`ol`-inside-`ul`.
 
 Mostly discovery-by-fixture work — good fit for fast iteration.
 
-**Deviations from plan:**
+**Deviations from plan:** None. Registered list elements to dynamically generate unique numbering reference IDs for each individual list in the document, which correctly restarts numbering at 1 for separate decimal lists. Added an alternating template configuration for up to 9 nesting levels: alternating bullet shapes for `ul` and decimals/letters/romans for `ol`. Configured correct twip indentation for nested levels (`left` and `hanging` indents). Extracted first-child paragraph or div contents of list items to align with the list bullet, and recursively processed nested block-level elements. Updated blocks to align continuation paragraphs inside list items to the correct left indent.
 
 ---
 

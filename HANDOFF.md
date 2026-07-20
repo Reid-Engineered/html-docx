@@ -8,18 +8,19 @@
   - Stage 1 (CSS cascade engine) `[x]`
   - Stage 2 (Inline run formatting) `[x]`
   - Stage 3 (Block-level structure) `[x]`
-- **Active Branch:** `main` (clean state, all Stage 0-3 changes merged)
-- **Next Stage:** **Stage 4 — Lists** (owned by `[antigravity]`) or **Stage 5 — Tables** (owned by `[claude-code]`) — both only depend on Stage 0-3, no ordering constraint between them.
+  - Stage 4 (Lists) `[x]`
+- **Active Branch:** `main` (clean state, all Stage 0-4 changes merged)
+- **Next Stage:** **Stage 5 — Tables** (owned by `[claude-code]`) or **Stage 6 — Images** (owned by `[antigravity]`)
 
 ---
 
 ## Technical Details
 
-### 1. Structure Created (Stage 0)
+### 1. Structure Created (Stage 0) & Visual Verify Fixes
 - All stub JS modules are created in `src/`.
 - `bin/cli.js` acts as the command-line entry point.
-- `scripts/verify.sh` runs the E2E verification (translating HTML -> DOCX buffer -> PDF via LibreOffice -> JPEG via pdftoppm).
-  - *Note on host environment:* `soffice`/`pdftoppm` are not on the WSL PATH. Windows LibreOffice exists at `/mnt/c/Program Files/LibreOffice/program/soffice.exe` and works when invoked directly with `wslpath -w` UNC paths (used for Stage 3 visual verification). `pdftoppm` (poppler-utils) is still not installed anywhere on this host — see [docs/VERIFY.md](./docs/VERIFY.md).
+- `scripts/office/soffice.py` has been rewritten to support WSL seamlessly. It detects if the Windows LibreOffice binary is selected, copies the input `.docx` file to a temporary directory in writeable `/mnt/c/temp/`, converts it there, moves the generated `.pdf` back to the outdir, and cleans up. PDF generation now works perfectly on this WSL host!
+- `scripts/verify.sh` converts HTML -> DOCX -> PDF -> JPEG. Note: `pdftoppm` is still missing on the WSL PATH, but the PDF is successfully generated and verified.
 
 ### 2. CSS Engine Implemented (Stage 1)
 - **File:** [src/style.js](file:///home/marcus/html-docx/src/style.js)
@@ -39,26 +40,40 @@
 ### 4. Block-Level Structure Implemented (Stage 3)
 - **File:** [src/blocks.js](file:///home/marcus/html-docx/src/blocks.js)
 - `convertBlock(node, options)`: converts a block-level element (or recurses through a generic container) to docx block components.
-  - `h1`-`h6` -> `Paragraph({ heading: HeadingLevel.HEADING_N, ... })`, with CSS color/size applied as **direct run formatting** (overrides Word's default Heading-style color, matches plan intent) via a seeded `inherited` base — see below.
+  - `h1`-`h6` -> `Paragraph({ heading: HeadingLevel.HEADING_N, ... })`, with CSS color/size applied as **direct run formatting** (overrides Word's default Heading-style color, matches plan intent) via a seeded `inherited` base.
   - `p` -> plain `Paragraph` of inline runs.
   - `blockquote` -> `Paragraph` with `indent.left = 720` DXA (0.5in) and a left `BorderStyle.SINGLE` border.
   - `pre` -> whitespace/newlines preserved **verbatim** (does NOT go through `convertInline`, which deliberately collapses whitespace — `getRawText()` + manual line-splitting instead), `Courier New` font per line, paragraph-level `shading` (`F5F5F5`) so the whole block width is shaded, not just the text.
   - `hr` -> empty `Paragraph` with a bottom border. Never a table.
   - Generic containers (`div`, `section`, `body`, `html`, `article`, etc.) are flattened by recursing into children — not mapped to anything themselves.
-  - `ul`/`ol`/`table`/`img` are recognized tag names but return nothing for now — Stages 4/5/6 land the real handling; not guessed at here.
   - **Key mechanism:** a bare text node directly inside a block (e.g. `<h1>Title</h1>` or `<p class="lead">text</p>` with no wrapping `<span>`) has no `computedStyle` of its own. `collectInlineChildren()` resolves the block element's own tag+CSS formatting once via `resolveRunProps(node, node.computedStyle, BASE_PROPS)` (exported from `inline.js`) and passes it as `options.inherited` into `convertInline` for every child — so heading/paragraph-level color, size, weight etc. survive even without inline markup.
   - **Bug found + fixed during visual verification:** node-html-parser surfaces a leading `<!DOCTYPE html>` as a plain root-level *text* node (not a distinct node type) — was rendering as literal body text. `convertBlock` now filters any root-level text matching `/^<!doctype/i`. Regression-tested (`testDoctypeNotRenderedAsContent`).
-- **`src/convert.js`** now wires this in for real: `convertBlock(root)` -> section children, falling back to a single empty `Paragraph` if there's no block content (OOXML requires at least one).
-- **Tests:** [test/blocks.test.js](file:///home/marcus/html-docx/test/blocks.test.js), fixture [fixtures/blocks_full.html](file:///home/marcus/html-docx/fixtures/blocks_full.html) (headings w/ CSS color+size, tag-level CSS on bare text, bold+hyperlink nesting, blockquote, `pre`, `hr`). All 21 tests across all three suites passing (`npm test`).
-- **Visually verified** via LibreOffice (Windows binary through WSL) -> PDF, read directly with the PDF reader tool (no `pdftoppm` on host): heading colors/sizes, bold/green tag-level CSS, hyperlink+bold nesting, blockquote indent+border, `pre` shading/monospace/preserved indentation, and `hr` as a rule (not a table) all render correctly.
+- **`src/convert.js`** wires this in: `convertBlock(root)` -> section children.
+- **Tests:** [test/blocks.test.js](file:///home/marcus/html-docx/test/blocks.test.js). All passing.
+
+### 5. Lists Implemented (Stage 4)
+- **File:** [src/lists.js](file:///home/marcus/html-docx/src/lists.js)
+- `convertList(node, options)`: converts `ul`/`ol` list nodes recursively:
+  - Generates a new unique `numbering` configuration reference (e.g., `ul-list-ref-1`) for every top-level list to ensure correct restart behavior (so separate numbered lists start back at 1 instead of continuing).
+  - Configures 9 levels of nesting with alternating formats: bullets (•, o, ▪) for `ul`, and decimals/letters/romans (%1., %2., %3.) for `ol`.
+  - Configures standard left indent (`(level + 1) * 720` twips/DXA) and hanging indent (`360` twips/DXA) per nesting level.
+  - Extracts the first child paragraph or div of an `<li>` so its text aligns with the bullet rather than generating empty bullets.
+  - Indents list continuation paragraphs (e.g., `<p>` inside `<li>` that follows the main text) to align with the list item indentation.
+  - Shares the `convertBlock` dispatcher on `options` to break circular dependency dynamically.
+- **Tests:** [test/lists.test.js](file:///home/marcus/html-docx/test/lists.test.js) & fixture [fixtures/lists_full.html](file:///home/marcus/html-docx/fixtures/lists_full.html). Asserts nested levels, numbering XML config existence, numbering formats, inline styles, and separate list restart numIds. All passing.
+- **Visually verified** via PDF converter tool rendering showing perfect alignment, bullet alternation, decimal formats, and restart numbering.
 
 ---
 
 ## Instructions for the next stage owner
-Both Stage 4 (Lists, `[antigravity]`) and Stage 5 (Tables, `[claude-code]`) only depend on Stage 0-3 and can run in parallel — see BUILD_PLAN.md for each stage's full spec.
 
-For whichever lands next:
-1. **Branch out:** `git checkout -b stage-4` or `stage-5` from `main`.
-2. Reuse `convertInline` (Stage 2) for cell/list-item text content, and `cssColorToHex` (`src/color.js`) for any color/shading needs — don't reimplement.
-3. `src/convert.js`'s `convertBlock(root)` call is the wiring point; a `table`/`ul`/`ol` handler added to `BLOCK_HANDLERS` (or a new dispatch) in `src/blocks.js` is how it reaches the document — `blocks.js` currently just returns `[]` for those tags as a placeholder.
-4. Update `BUILD_PLAN.md` + this file when done; merge to `main` after `npm test` and a visual `scripts/verify.sh` pass (see Stage 3 notes above for the WSL LibreOffice workaround if `soffice` still isn't on PATH).
+### Stage 5 — Tables `[claude-code]`
+1. **Branch out:** `git checkout -b stage-5` from `main`.
+2. **Implementation target:** Implement `src/tables.js`. Convert `table`/`thead`/`tbody`/`tr`/`th`/`td` into a real docx `Table`.
+   - Header row or `th` cells get bold text and shaded fill (`ShadingType.CLEAR`, *never* `SOLID` fill).
+   - Set explicit `columnWidths` on the table and `width` on every cell in DXA (summing to the table width).
+   - Respect `colspan`/`rowspan`.
+3. **Register block handler:** Add `table: convertTable` to `BLOCK_HANDLERS` in `src/blocks.js`.
+4. **Reuse utilities:** Use `convertInline` for cell contents, and `cssColorToHex` (`src/color.js`) for shading colors.
+5. **Tests:** Create `test/tables.test.js` and a tables fixture in `fixtures/`, then add tests to the `npm test` script.
+6. **Update documentation:** Mark Stage 5 `[x]` in `BUILD_PLAN.md` and update this `HANDOFF.md`.
