@@ -11,32 +11,29 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | *(fill on edit — run `git log -1 --oneline`)* |
-| **Branch** | `main` expected for next work; confirm with `git branch --show-current` |
-| **Working tree** | Must match `git status -sb` |
-| **origin** | Often **ahead of `origin/main`** — push is optional ops, not a stage gate |
-| **Stages complete on `main`** | 0–5 code merged; see BUILD_PLAN `[x]` |
-| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` |
+| **HEAD** | `c178460 chore: process DoD, Stage 5 Janus accept, verify soft-fail` |
+| **Branch** | `main` |
+| **Working tree** | clean after that commit (re-check with `git status -sb`) |
+| **origin** | **ahead of `origin/main` by 8** — push optional |
+| **Stages complete on `main`** | 0–5 code merged (`be90c73` tables merge + `c178460` process) |
+| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` (5 committed in `c178460`) |
 | **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
 | **Open P1 debt** | Nested list numbering (Stage 4 review) — do not “fix” mid–Stage 6/7 unless assigned |
 
 ### Snapshot at last Janus process fix (2026-07-20)
 
-Run the commands below and replace this subsection if anything drifted:
-
 ```bash
-cd ~/html-docx   # or /home/marcus/html-docx
-git status -sb
-git log -1 --oneline
-npm test
+cd /home/marcus/html-docx
+git status -sb          # expect: main, clean, ahead of origin by 8+
+git log -1 --oneline    # expect: c178460 chore: process DoD...
+npm test                # expect: 34 tests, all pass
+./scripts/verify.sh fixtures/simple.html   # PDF OK; pdftoppm may WARN skip
 ```
 
-Expected after Janus commit `chore/docs: process DoD + stage-5 review + verify soft-fail`:
-- Branch `main`
-- Tree **clean** (no stray WIP)
-- Stages 0–5 on history through merge `be90c73` + follow-up process commit
+Expected after `c178460`:
+- Branch `main`, tree **clean**
+- Stages 0–5 on history through `be90c73` + process commit `c178460`
 - `npm test` — style 6 + inline 8 + blocks 8 + lists **4** + tables 8 = **34** tests
-
 ---
 
 ## Janus did this (context for Claude Code / Gemini) — 2026-07-20
