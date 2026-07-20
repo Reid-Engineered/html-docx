@@ -11,14 +11,14 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | `fe4de4e feat: implement polish/edge cases (Stage 8) including CSS shorthands, named themes, and nested list numbering fix` |
-| **Branch** | `main` |
-| **Working tree** | clean (verified via `git status -sb`) |
-| **origin** | ahead by 19 (verified via `git status -sb`) |
-| **Stages complete on `main`** | 0–8 code merged (all stages completed!) |
-| **Janus accepts** | Stage 3, 4, 5, 6, 7 — `docs/reviews/2026-07-20-stage-*.md` |
-| **Next stage** | None (Project complete) |
-| **Open P1 debt** | None (Nested list numbering P1 fix implemented in Stage 8) |
+| **HEAD** | run `git log -1 --oneline` |
+| **Branch** | run `git branch --show-current` |
+| **Working tree** | run `git status -sb` |
+| **origin** | run `git status -sb` (likely ahead; push optional) |
+| **Stages complete on `main`** | **0–8** (all BUILD_PLAN stages) |
+| **Janus accepts** | Stages 3–8 — `docs/reviews/2026-07-20-stage-*.md` |
+| **Next stage** | None planned — optional push / polish backlog |
+| **Open debt** | Nested lists still multi-instance numbering (format OK); image relative paths P2 |
 
 ### Snapshot at last check (2026-07-20)
 

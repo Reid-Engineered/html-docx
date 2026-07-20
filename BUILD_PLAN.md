@@ -368,7 +368,18 @@ Fixture-bashing stage — good fit for fast iteration. Use Antigravity's
 screenshot-based verification against each fixture to flag regressions
 without manual `pdftoppm` review of every case.
 
-**Deviations from plan:** None. Implemented CSS shorthand expansion (`font`, `background`), custom named themes overrides (`modern`, `classic`, `dark`, `creative`) applied during Cascade Style resolution, and resolved the nested list numbering format P1 debt. Dynamic numbering configurator maps `list-style-type` / `type` attributes (decimal, lower-alpha, lower-roman, upper-roman, disc, circle, square, none) to numbering instances, defaulting nested `<ol>` levels to decimals. Malformed/empty structures are handled gracefully without crashing. Verified via unit tests (`test/polish.test.js`) and visual PDF conversions.
+**Deviations from plan:** Expanded beyond the original bullet list: CSS
+shorthand expansion (`font`, `background`); named themes (`modern`,
+`classic`, `dark`, `creative`) applied in cascade; nested list numbering
+defaults all `ol` levels to **decimal** (fixes Stage 4 P1 letter markers)
+and maps `list-style-type` / HTML `type`. Malformed/empty HTML tolerated.
+
+**Janus review (2026-07-20):** ACCEPT — polish tests green; LO PDF on
+`fixtures/polish_full.html`; nested `ol` abstracts use decimal at elevated
+levels; `--theme dark` verified in XML. Residual P2: still one numbering
+instance per nested list (not single multi-level abstract). See
+`docs/reviews/2026-07-20-stage-8.md`.
+
 
 ---
 
