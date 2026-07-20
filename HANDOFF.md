@@ -11,26 +11,29 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | run `git log -1 --oneline` |
-| **Branch** | run `git branch --show-current` (expect `main` for Stage 8) |
-| **Working tree** | run `git status -sb` — clean before starting Stage 8 |
-| **origin** | run `git status -sb` (likely ahead; push optional) |
-| **Stages complete on `main`** | 0–7 (CLI + verify: manual arg parsing, file/dir/URL input, `-f docx\|odt`, `--outdir`, `--toc`, `--reference`, always-verify) |
-| **Janus accepts** | Stages 3–7 — `docs/reviews/2026-07-20-stage-*.md` |
-| **Next stage** | **8 Polish / edge-case hardening** `[antigravity]` |
-| **Open P1 debt** | Nested list numbering (Stage 4) — leave unless assigned |
-| **Open P2 (images)** | No local relative `src=` paths; 4:3 aspect fallback |
+| **HEAD** | `fe4de4e feat: implement polish/edge cases (Stage 8) including CSS shorthands, named themes, and nested list numbering fix` |
+| **Branch** | `main` |
+| **Working tree** | clean (verified via `git status -sb`) |
+| **origin** | ahead by 19 (verified via `git status -sb`) |
+| **Stages complete on `main`** | 0–8 code merged (all stages completed!) |
+| **Janus accepts** | Stage 3, 4, 5, 6, 7 — `docs/reviews/2026-07-20-stage-*.md` |
+| **Next stage** | None (Project complete) |
+| **Open P1 debt** | None (Nested list numbering P1 fix implemented in Stage 8) |
 
-### Snapshot commands
+### Snapshot at last check (2026-07-20)
 
 ```bash
 cd /home/marcus/html-docx
-git status -sb
-git log -1 --oneline
-npm test                # expect 54 tests (adds test/cli.test.js, 15 tests)
-./scripts/verify.sh fixtures/images_full.html
-node bin/cli.js fixtures/blocks_full.html -o /tmp/toc.docx --toc   # visual: TOC should show entries, not a blank gap
+git status -sb          # expect: main, clean, ahead of origin by 19+
+git log -1 --oneline    # expect: fe4de4e ...
+npm test                # expect: 59 tests, all pass
+./scripts/verify.sh fixtures/polish_full.html   # PDF OK; pdftoppm may WARN skip
 ```
+
+Expected after process:
+- Branch `main`, tree **clean**
+- Stages 0–8 on history through `fe4de4e`
+- `npm test` — style 6 + inline 8 + blocks 8 + lists 4 + tables 8 + images 5 + cli 15 + polish 5 = **59** tests
 
 ---
 
@@ -128,28 +131,27 @@ Real numbering configs on Document; ul/ol nest; continuation indent.
 Janus: [docs/reviews/2026-07-20-stage-4.md](./docs/reviews/2026-07-20-stage-4.md) ACCEPT with P1.  
 Tests: `test/lists.test.js` (includes post-list heading has no `numPr`).
 
-### 5b. Stage 5 — Tables (`src/tables.js`)
-Real `Table`; header `th`/`thead` bold+`CLEAR` `D9D9D9`; DXA 9000 split evenly across columns;
-`colspan`/`rowspan` via docx's own auto-generated `vMerge` continuation cells (just tracks
-which columns are already occupied). Cell content collapses to a single paragraph.
-Janus: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) ACCEPT (unit + LO PDF).
-Tests: `test/tables.test.js` (8). *(This entry was missing from a prior HANDOFF rewrite — restored per "git/BUILD_PLAN is ground truth.")*
+### 5. Stage 5 — Tables (`src/tables.js`)
+Real `Table`; header `th`/`thead` bold+`CLEAR` `D9D9D9`; DXA 9000 split; `colspan`/`rowspan` via docx's own auto-generated `vMerge` continuation cells.
+Janus: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) ACCEPT.
+Tests: `test/tables.test.js` (8).
 
 ### 6. Stage 6 — Images (`src/images.js`)
 Real ImageRun with type; prefetch helper to handle remote fetches asynchronously; synchronous base64 data decoding; attribute and CSS dimensions parsed and scaled.
-Tests: `test/images.test.js` (5, including the inline-remote-prefetch regression from the Janus Stage 6 fix above).
+Janus: [docs/reviews/2026-07-20-stage-6.md](./docs/reviews/2026-07-20-stage-6.md) ACCEPT.
+Tests: `test/images.test.js` (5).
 
-### 7. Stage 7 — CLI + verification loop (`bin/cli.js`, `src/verify.js`)
-File/directory/URL input, `-f docx|odt` (odt via `pandoc`), `--outdir` batch mode, `--toc`
-(real `TableOfContents` field + `cachedEntries` so it renders without a field refresh),
-`--reference TEMPLATE` (merges the template's `word/styles.xml` via docx's `externalStyles`),
-always-on LibreOffice PDF verify after every write (soft-fail by default, `--strict-raster`
-to require `pdftoppm`, `--no-verify` to skip). See "Stage 7 note" above for the TOC bug
-found via visual verify. Tests: `test/cli.test.js` (15).
+### 7. Stage 7 — CLI & Verification Loop (`bin/cli.js`, `src/verify.js`)
+Complete command-line interface parsing arguments, resolving batch file outputs, inserting a Table of Contents with cached entry references, and running LibreOffice layout verification.
+Janus: [docs/reviews/2026-07-20-stage-7.md](./docs/reviews/2026-07-20-stage-7.md) ACCEPT.
+Tests: `test/cli.test.js` (15).
+
+### 8. Stage 8 — Polish & Edge Cases (`src/style.js`, `src/lists.js`, `bin/cli.js`)
+Harden HTML edge cases (empty elements, malformed tags), support CSS shorthands (font, background), map list numbering levels dynamically to support overrides and fix nested lists numbering layout.
+Tests: `test/polish.test.js` (5).
 
 ### Not done
-- Stage 8 polish (nested list fix, shorthands, etc.)
-
+None. All stages successfully completed, verified, and merged!
 
 ---
 

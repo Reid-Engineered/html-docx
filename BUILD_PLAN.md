@@ -353,7 +353,7 @@ still requires hard PDF when reviewing layout. See
 ---
 
 ## Stage 8 — Polish / edge-case hardening `[antigravity]`
-**Status:** [ ]
+**Status:** [x]
 
 Harden edge cases:
 - empty elements
@@ -368,7 +368,7 @@ Fixture-bashing stage — good fit for fast iteration. Use Antigravity's
 screenshot-based verification against each fixture to flag regressions
 without manual `pdftoppm` review of every case.
 
-**Deviations from plan:**
+**Deviations from plan:** None. Implemented CSS shorthand expansion (`font`, `background`), custom named themes overrides (`modern`, `classic`, `dark`, `creative`) applied during Cascade Style resolution, and resolved the nested list numbering format P1 debt. Dynamic numbering configurator maps `list-style-type` / `type` attributes (decimal, lower-alpha, lower-roman, upper-roman, disc, circle, square, none) to numbering instances, defaulting nested `<ol>` levels to decimals. Malformed/empty structures are handled gracefully without crashing. Verified via unit tests (`test/polish.test.js`) and visual PDF conversions.
 
 ---
 
