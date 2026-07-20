@@ -264,7 +264,18 @@ reasonable docx dimensions.
 
 No dependency on Stages 2/3/5 — safe to run in parallel with Stage 1.
 
-**Deviations from plan:** None. Implemented asynchronous image prefetching in `convert.js` before executing the DOM walk so that the actual block/inline conversions remain synchronous. Supports inline `<img>` tags by propagating the prefetch buffers and options into `convertInline`. Custom widths/heights (pixel, point, percentage) from attributes or CSS style properties are correctly parsed and converted to pixels for `ImageRun`. Fetching caps downloads at 5MB and includes a 5-second timeout. Graceful skip checks are verified via mock fetch unit tests and a local base64 layout PDF rendering fixture.
+**Deviations from plan:** Asynchronous image prefetching in `convert.js` before
+the DOM walk so block/inline conversion stays synchronous. Supports inline
+`<img>` via `convertInline` + block `<img>` via `BLOCK_HANDLERS`. Dimensions
+from attributes or CSS (`width`/`height` on computedStyle). Fetch caps: 5MB /
+5s timeout; failures warn and skip.
+
+**Janus review (2026-07-20):** ACCEPT after fix — remote images inside
+paragraphs/cells/list items dropped `imageBuffers` because callers passed only
+`{ inherited }` into `convertInline`. Plumbing fixed in blocks/lists/tables;
+regression `testInlineRemoteImageUsesPrefetchBuffers`. See
+`docs/reviews/2026-07-20-stage-6.md`. Local file paths still unsupported (P2).
+
 
 ---
 

@@ -11,34 +11,37 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | `acfde57 docs: mark Stage 6 completed in build plan and handoff` |
-| **Branch** | `main` |
-| **Working tree** | clean (verified via `git status -sb`) |
-| **origin** | ahead by 13 (verified via `git status -sb`) |
-| **Stages complete on `main`** | 0–6 code merged (`be90c73` tables, `3f9cb01` images) |
-| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` |
+| **HEAD** | run `git log -1 --oneline` |
+| **Branch** | run `git branch --show-current` (expect `main` for Stage 7) |
+| **Working tree** | run `git status -sb` — clean before starting Stage 7 |
+| **origin** | run `git status -sb` (likely ahead; push optional) |
+| **Stages complete on `main`** | 0–6 (`3f9cb01` images + Janus options fix commit) |
+| **Janus accepts** | Stages 3–6 — `docs/reviews/2026-07-20-stage-*.md` |
 | **Next stage** | **7 CLI+verify** `[claude-code]` |
-| **Open P1 debt** | Nested list numbering (Stage 4 review) — do not “fix” mid–Stage 7 unless assigned |
+| **Open P1 debt** | Nested list numbering (Stage 4) — leave unless assigned |
+| **Open P2 (images)** | No local relative `src=` paths; 4:3 aspect fallback |
 
-### Snapshot at last check (2026-07-20)
+### Snapshot commands
 
 ```bash
 cd /home/marcus/html-docx
-git status -sb          # expect: main, clean, ahead of origin by 13+
-git log -1 --oneline    # expect: 3f9cb01 ...
-npm test                # expect: 38 tests, all pass
-./scripts/verify.sh fixtures/images_full.html   # PDF OK; pdftoppm may WARN skip
+git status -sb
+git log -1 --oneline
+npm test                # expect 39 tests (images suite includes inline-remote regression)
+./scripts/verify.sh fixtures/images_full.html
 ```
 
-Expected after process:
-- Branch `main`, tree **clean**
-- Stages 0–6 on history through `3f9cb01`
-- `npm test` — style 6 + inline 8 + blocks 8 + lists 4 + tables 8 + images 4 = **38** tests
 ---
 
-## Janus did this (context for Claude Code / Gemini) — 2026-07-20
+## Janus Stage 6 note (2026-07-20) — read before Stage 7
 
-Marcus assigned Janus to fix process drift and leave implementers a clear trail. **Janus did not implement Stage 6/7 features.**
+Antigravity shipped images (`3f9cb01`). Janus reviewed and found **P0**: remote `<img>` inside `<p>`/`li`/`td` lost prefetched buffers. Fixed options threading in `blocks.js` / `lists.js` / `tables.js`; added `testInlineRemoteImageUsesPrefetchBuffers`. Formal accept: [docs/reviews/2026-07-20-stage-6.md](./docs/reviews/2026-07-20-stage-6.md).
+
+---
+
+## Janus process work earlier (context for Claude Code / Gemini) — 2026-07-20
+
+Marcus assigned Janus to fix process drift and leave implementers a clear trail. **Janus did not implement Stage 6/7 features** (except the Stage 6 options plumbing fix above).
 
 ### Problems found
 1. HANDOFF claimed `main (clean state, all Stage 0-5 merged)` while tree had dirty `test/lists.test.js` and untracked Stage 5 review — classic doc/git split BUILD_PLAN was meant to prevent.

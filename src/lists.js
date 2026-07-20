@@ -124,7 +124,7 @@ function convertListItem(node, options) {
   const inherited = resolveRunProps(node, node.computedStyle || {}, BASE_PROPS);
   const runs = [];
   for (const child of inlineNodes) {
-    runs.push(...convertInline(child, undefined, { inherited }));
+    runs.push(...convertInline(child, undefined, { ...options, inherited }));
   }
 
   // Create main list item paragraph

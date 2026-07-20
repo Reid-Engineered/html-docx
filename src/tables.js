@@ -87,22 +87,23 @@ function walkRows(rowDescriptors, visitCell) {
   return { rows, totalColumns: maxCols || 1 };
 }
 
-function collectCellParagraph(node, { header }) {
+function collectCellParagraph(node, { header }, convertOptions = {}) {
   const resolved = resolveRunProps(node, node.computedStyle || {}, BASE_PROPS);
   const inherited = header ? { ...resolved, bold: true } : resolved;
 
   const runs = [];
+  const inlineOpts = { ...convertOptions, inherited };
   for (const child of node.childNodes) {
-    runs.push(...convertInline(child, undefined, { inherited }));
+    runs.push(...convertInline(child, undefined, inlineOpts));
   }
   if (runs.length === 0) runs.push(new TextRun({ text: '' }));
 
   return new Paragraph({ children: runs });
 }
 
-function buildCell(node, { header, colSpan, rowSpan, width }) {
+function buildCell(node, { header, colSpan, rowSpan, width }, convertOptions = {}) {
   const options = {
-    children: [collectCellParagraph(node, { header })],
+    children: [collectCellParagraph(node, { header }, convertOptions)],
     width: { size: width, type: WidthType.DXA }
   };
   if (header) options.shading = { fill: HEADER_SHADING_FILL, type: ShadingType.CLEAR, color: 'auto' };
@@ -146,7 +147,7 @@ export function convertTable(node, options = {}) {
       colSpan,
       rowSpan,
       width: sumColumnWidths(columnWidths, colIndex, colSpan)
-    })
+    }, options)
   );
 
   const tableRows = rowCells

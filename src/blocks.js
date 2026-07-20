@@ -52,11 +52,13 @@ function applyListIndent(paragraphProps, options) {
  * @param {import('node-html-parser').HTMLElement} node
  * @returns {Array<TextRun|import('docx').ExternalHyperlink>}
  */
-function collectInlineChildren(node) {
+function collectInlineChildren(node, options = {}) {
   const inherited = resolveRunProps(node, node.computedStyle || {}, BASE_PROPS);
   const runs = [];
+  // Keep convert options (e.g. imageBuffers) while seeding inherited run props.
+  const inlineOpts = { ...options, inherited };
   for (const child of node.childNodes) {
-    runs.push(...convertInline(child, undefined, { inherited }));
+    runs.push(...convertInline(child, undefined, inlineOpts));
   }
   return runs;
 }
@@ -64,19 +66,19 @@ function collectInlineChildren(node) {
 function convertHeading(node, tagName, options = {}) {
   const props = {
     heading: HEADING_LEVELS[tagName],
-    children: collectInlineChildren(node)
+    children: collectInlineChildren(node, options)
   };
   return [new Paragraph(applyListIndent(props, options))];
 }
 
 function convertParagraph(node, options = {}) {
-  const props = { children: collectInlineChildren(node) };
+  const props = { children: collectInlineChildren(node, options) };
   return [new Paragraph(applyListIndent(props, options))];
 }
 
 function convertBlockquote(node, options = {}) {
   const props = {
-    children: collectInlineChildren(node),
+    children: collectInlineChildren(node, options),
     indent: { left: BLOCKQUOTE_INDENT_DXA },
     border: {
       left: { style: BorderStyle.SINGLE, size: 6, color: BLOCKQUOTE_BORDER_COLOR, space: 8 }
@@ -172,7 +174,7 @@ export function convertBlock(node, options = {}) {
     // node rather than a distinct node type -- it's markup, not content.
     if (!text || /^<!doctype/i.test(text)) return [];
     
-    const props = { children: convertInline(node) };
+    const props = { children: convertInline(node, undefined, options) };
     return [new Paragraph(applyListIndent(props, options))];
   }
 

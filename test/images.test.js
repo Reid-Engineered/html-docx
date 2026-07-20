@@ -126,12 +126,26 @@ async function testInlineImagePlacement() {
   console.log('✓ testInlineImagePlacement passed');
 }
 
+async function testInlineRemoteImageUsesPrefetchBuffers() {
+  const html = `<html><body><p>Before <img src="${MOCK_URL}" width="50" height="50"> after</p></body></html>`;
+  const buffer = await convertHtmlToDocx(html);
+  const zip = await JSZip.loadAsync(buffer);
+  const files = Object.keys(zip.files);
+  const hasMedia = files.some(f => f.startsWith('word/media/') && f !== 'word/media/');
+  assert.ok(hasMedia, 'expected inline remote <img> to use prefetched buffers (imageBuffers must reach convertInline)');
+  const documentXml = await zip.file('word/document.xml').async('string');
+  assert.ok(documentXml.includes('w:drawing'), 'expected drawing for inline remote image');
+  assert.ok(documentXml.includes('Before') && documentXml.includes('after'));
+  console.log('✓ testInlineRemoteImageUsesPrefetchBuffers passed');
+}
+
 async function runAll() {
   try {
     await testBase64ImageDecoding();
     await testRemoteImagePrefetchingAndType();
     await testFetchFailureGracefulSkip();
     await testInlineImagePlacement();
+    await testInlineRemoteImageUsesPrefetchBuffers();
     console.log('All image tests passed successfully!');
   } finally {
     // Restore fetch
