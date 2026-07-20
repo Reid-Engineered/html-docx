@@ -11,10 +11,10 @@
 
 | Field | Value |
 |-------|--------|
-| **HEAD** | `3439a77 docs: align HANDOFF HEAD with FOR_CLAUDE commit` |
+| **HEAD** | run `git log -1 --oneline` (process base `c178460`; do not invent) |
 | **Branch** | `main` |
-| **Working tree** | clean (verify: `git status -sb`) |
-| **origin** | **ahead of `origin/main` by 10** — push optional |
+| **Working tree** | run `git status -sb` — must be clean before starting a stage |
+| **origin** | run `git status -sb` (likely ahead of origin; push optional) |
 | **Stages complete on `main`** | 0–5 code merged (`be90c73` tables merge + `c178460` process) |
 | **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` (5 committed in `c178460`) |
 | **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
