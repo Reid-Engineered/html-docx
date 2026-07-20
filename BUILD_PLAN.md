@@ -319,9 +319,31 @@ without manual `pdftoppm` review of every case.
 
 ## Coordination rules
 1. One `BUILD_PLAN.md` (this file) — both tools read it before starting,
-   update it after finishing.
-2. One git branch per stage, merge to `main` only after `verify.sh` passes.
+   update it after finishing a stage (status + deviations).
+2. One git branch per stage. Merge to `main` only when **Definition of done**
+   below is met — not when the chat “feels done.”
 3. One tool owns one stage, start to finish — no mid-stage handoffs.
-4. Antigravity owns the visual verification step (screenshots/recordings
-   against `scripts/verify.sh` output) after Claude Code finishes a
-   sequential-stage batch.
+4. **Git is ground truth for branch/clean/merged.** `HANDOFF.md` must match
+   `git status -sb` and `git log -1 --oneline`. Never write “clean state” or
+   “merged to main” unless those commands agree. If docs and git disagree, git wins;
+   fix the docs in the same session.
+5. **Definition of done** before marking a stage **`[x]`** and before claiming
+   complete in HANDOFF:
+   - [ ] Implementation on the stage branch
+   - [ ] `npm test` green (including new suite files in `package.json`)
+   - [ ] BUILD_PLAN deviations filled if behavior ≠ original bullets
+   - [ ] Merged to `main` (merge commit or FF on `main`)
+   - [ ] Working tree clean *or* only unrelated files, called out in HANDOFF
+   - [ ] **Layout-sensitive stages (3+ blocks/lists/tables/images):** LibreOffice
+         PDF via `scripts/verify.sh` or `scripts/office/soffice.py` on the stage
+         fixtures — owner records paths; JPEG via `pdftoppm` optional unless
+         `STRICT_RASTER=1`
+   - [ ] **Janus formal accept** when Marcus requires third-source review:
+         `docs/reviews/YYYY-MM-DD-stage-N.md` with ACCEPT, committed to `main`
+   - [ ] HANDOFF Current Status rewritten from live git (HEAD, dirty, next stage,
+         link to Janus review if any)
+6. `npm test` green alone is **not** done for stages that touch Word layout
+   (shading, widths, numbering, merges, images).
+7. Antigravity may own batch screenshot review after Claude finishes a sequential
+   batch; that does not replace Janus accept when Marcus asked for it.
+8. Read **[JANUS.md](./JANUS.md)** at session start.

@@ -1,84 +1,118 @@
 # Handoff Note: html2docx
 
-**Agents:** read [JANUS.md](./JANUS.md) (advisor / third source of truth) with BUILD_PLAN.md at session start.
-
-## Current Status
-- **Completed Stages:** 
-  - Stage 0 (Scaffold) `[x]`
-  - Stage 1 (CSS cascade engine) `[x]`
-  - Stage 2 (Inline run formatting) `[x]`
-  - Stage 3 (Block-level structure) `[x]`
-  - Stage 4 (Lists) `[x]`
-  - Stage 5 (Tables) `[x]`
-- **Active Branch:** `main` (clean state, all Stage 0-5 changes merged)
-- **Next Stage:** **Stage 6 — Images** (owned by `[antigravity]`) or **Stage 7 — CLI + verification loop** (owned by `[claude-code]`) — Stage 7 needs 0-5 wired end-to-end (now true) but doesn't need Stage 6; no ordering constraint between them.
+**Agents:** read [JANUS.md](./JANUS.md) + [BUILD_PLAN.md](./BUILD_PLAN.md) at session start.  
+**Git is ground truth.** Before editing this file, run `git status -sb` and `git log -1 --oneline`. Never claim “clean” or “merged” unless those agree.
 
 ---
 
-## Technical Details
+## Current Status (authoritative — update every session end)
 
-### 1. Structure Created (Stage 0) & Visual Verify Fixes
-- All stub JS modules are created in `src/`.
-- `bin/cli.js` acts as the command-line entry point.
-- `scripts/office/soffice.py` has been rewritten to support WSL seamlessly. It detects if the Windows LibreOffice binary is selected, copies the input `.docx` file to a temporary directory in writeable `/mnt/c/temp/`, converts it there, moves the generated `.pdf` back to the outdir, and cleans up. PDF generation now works perfectly on this WSL host!
-- `scripts/verify.sh` converts HTML -> DOCX -> PDF -> JPEG. Note: `pdftoppm` is still missing on the WSL PATH, but the PDF is successfully generated and verified.
+> **Regenerate this block from git, do not prose-edit from memory.**
 
-### 2. CSS Engine Implemented (Stage 1)
-- **File:** [src/style.js](file:///home/marcus/html-docx/src/style.js)
-- `applyStylesToTree(rootNode, defaultRootFontSize)`: walks the DOM, resolves/attaches computed styles to every element in `node.computedStyle`. Supports tag/`.class`/`#id`/`tag.class`/`tag#id`/`*` selectors, specificity (ID=100/class=10/tag=1), inheritance of `color`/`font-family`/`font-size`/`font-weight`/`font-style`/`text-decoration`, and px/pt/em/rem/% font-size resolution to `"Npt"` strings.
-- **Tests:** [test/style.test.js](file:///home/marcus/html-docx/test/style.test.js) — all passing.
+| Field | Value |
+|-------|--------|
+| **HEAD** | *(fill on edit — run `git log -1 --oneline`)* |
+| **Branch** | `main` expected for next work; confirm with `git branch --show-current` |
+| **Working tree** | Must match `git status -sb` |
+| **origin** | Often **ahead of `origin/main`** — push is optional ops, not a stage gate |
+| **Stages complete on `main`** | 0–5 code merged; see BUILD_PLAN `[x]` |
+| **Janus accepts** | Stage 3, 4, 5 — `docs/reviews/2026-07-20-stage-*.md` |
+| **Next stage** | **6 Images** `[antigravity]` and/or **7 CLI+verify** `[claude-code]` (parallel OK) |
+| **Open P1 debt** | Nested list numbering (Stage 4 review) — do not “fix” mid–Stage 6/7 unless assigned |
 
-### 3. Inline Run Formatting Implemented (Stage 2)
-- **File:** [src/inline.js](file:///home/marcus/html-docx/src/inline.js)
-- `convertInline(node, computedStyle, options)`: given an inline-level DOM node (text or element, `computedStyle` from Stage 1), recursively returns a flat `Array<TextRun|ExternalHyperlink>`.
-  - Tag semantics: `<strong>`/`<b>` bold, `<em>`/`<i>` italics, `<u>` underline, `<s>`/`<strike>`/`<del>` strike, `<code>` monospace (`Courier New`) + shading (`EDEDED`, `ShadingType.CLEAR`), `<br>` -> `TextRun({ break: 1 })` (no `Break` class in docx v9), `<a href>` -> real `ExternalHyperlink` with `style: "Hyperlink"` runs (direct CSS formatting still overrides, matching Word precedence).
-  - Tag-implied and CSS-resolved formatting combine via OR down the tree.
-  - **Exports used by Stage 3:** `BASE_PROPS` and `resolveRunProps(node, computedStyle, inherited)` — resolves a single node's own tag+CSS formatting; `blocks.js` uses this to seed bare text children (see Stage 3 notes below).
-  - Color conversion lives in **`src/color.js`** (`cssColorToHex`) — hex/`rgb()`/`rgba()`/147 named colors -> docx 6-digit hex. Shared by Stage 3 (heading colors) and reusable by Stage 5 (table shading).
-  - `font-size` (`"Npt"` string from Stage 1) -> half-points for docx's `size`.
-- **Tests:** [test/inline.test.js](file:///home/marcus/html-docx/test/inline.test.js) — builds real docx output via `Packer.toBuffer`, unzips with `jszip` (devDependency), asserts on actual `word/document.xml` markup. All passing.
+### Snapshot at last Janus process fix (2026-07-20)
 
-### 4. Block-Level Structure Implemented (Stage 3)
-- **File:** [src/blocks.js](file:///home/marcus/html-docx/src/blocks.js)
-- `convertBlock(node, options)`: converts a block-level element (or recurses through a generic container) to docx block components.
-  - `h1`-`h6` -> `Paragraph({ heading: HeadingLevel.HEADING_N, ... })`, with CSS color/size applied as **direct run formatting** (overrides Word's default Heading-style color, matches plan intent) via a seeded `inherited` base.
-  - `p` -> plain `Paragraph` of inline runs.
-  - `blockquote` -> `Paragraph` with `indent.left = 720` DXA (0.5in) and a left `BorderStyle.SINGLE` border.
-  - `pre` -> whitespace/newlines preserved **verbatim** (does NOT go through `convertInline`, which deliberately collapses whitespace — `getRawText()` + manual line-splitting instead), `Courier New` font per line, paragraph-level `shading` (`F5F5F5`) so the whole block width is shaded, not just the text.
-  - `hr` -> empty `Paragraph` with a bottom border. Never a table.
-  - Generic containers (`div`, `section`, `body`, `html`, `article`, etc.) are flattened by recursing into children — not mapped to anything themselves.
-  - **Key mechanism:** a bare text node directly inside a block (e.g. `<h1>Title</h1>` or `<p class="lead">text</p>` with no wrapping `<span>`) has no `computedStyle` of its own. `collectInlineChildren()` resolves the block element's own tag+CSS formatting once via `resolveRunProps(node, node.computedStyle, BASE_PROPS)` (exported from `inline.js`) and passes it as `options.inherited` into `convertInline` for every child — so heading/paragraph-level color, size, weight etc. survive even without inline markup.
-  - **Bug found + fixed during visual verification:** node-html-parser surfaces a leading `<!DOCTYPE html>` as a plain root-level *text* node (not a distinct node type) — was rendering as literal body text. `convertBlock` now filters any root-level text matching `/^<!doctype/i`. Regression-tested (`testDoctypeNotRenderedAsContent`).
-- **`src/convert.js`** wires this in: `convertBlock(root)` -> section children.
-- **Tests:** [test/blocks.test.js](file:///home/marcus/html-docx/test/blocks.test.js). All passing.
+Run the commands below and replace this subsection if anything drifted:
 
-### 5. Lists Implemented (Stage 4)
-- **File:** [src/lists.js](file:///home/marcus/html-docx/src/lists.js)
-- `convertList(node, options)`: converts `ul`/`ol` list nodes recursively:
-  - Generates a new unique `numbering` configuration reference (e.g., `ul-list-ref-1`) for every top-level list to ensure correct restart behavior (so separate numbered lists start back at 1 instead of continuing).
-  - Configures 9 levels of nesting with alternating formats: bullets (•, o, ▪) for `ul`, and decimals/letters/romans (%1., %2., %3.) for `ol`.
-  - Configures standard left indent (`(level + 1) * 720` twips/DXA) and hanging indent (`360` twips/DXA) per nesting level.
-  - Extracts the first child paragraph or div of an `<li>` so its text aligns with the bullet rather than generating empty bullets.
-  - Indents list continuation paragraphs (e.g., `<p>` inside `<li>` that follows the main text) to align with the list item indentation.
-  - Shares the `convertBlock` dispatcher on `options` to break circular dependency dynamically.
-- **Tests:** [test/lists.test.js](file:///home/marcus/html-docx/test/lists.test.js) & fixture [fixtures/lists_full.html](file:///home/marcus/html-docx/fixtures/lists_full.html). Asserts nested levels, numbering XML config existence, numbering formats, inline styles, and separate list restart numIds. All passing.
-- **Visually verified** via PDF converter tool rendering showing perfect alignment, bullet alternation, decimal formats, and restart numbering.
+```bash
+cd ~/html-docx   # or /home/marcus/html-docx
+git status -sb
+git log -1 --oneline
+npm test
+```
 
-### 6. Tables Implemented (Stage 5)
-- **File:** [src/tables.js](file:///home/marcus/html-docx/src/tables.js)
-- `convertTable(node, options)`: converts an HTML `<table>` to a real docx `Table`.
-  - `thead`/`tbody`/`tfoot` wrapping is flattened — finds all descendant `<tr>` via `querySelectorAll('tr')` directly rather than walking section-by-section.
-  - A row counts as a header row if it's inside `<thead>`; a cell counts as a header cell if it's a `<th>`. Either triggers bold text + `D9D9D9` shading (`ShadingType.CLEAR`, never `SOLID`).
-  - `colspan`/`rowspan` respected via the standard HTML table layout algorithm (`walkRows()` tracks which columns are still "occupied" by an ongoing rowspan from an earlier row) — **docx auto-generates the `vMerge` CONTINUE cells itself** once you set `rowSpan` on the origin `TableCell` (confirmed in `docx`'s own source), so `tables.js` only needs to avoid placing one of the HTML's own `<td>`s in an already-occupied column, not build the continuation cells by hand.
-  - Table width is fixed at 9000 DXA (~6.25in), split evenly across columns (remainder absorbed by the last column so the sum is always exact) — both `columnWidths` on the `Table` and `width` on every `TableCell` are explicit DXA, never percentage (percentage breaks in Google Docs, per the plan).
-  - Each cell's content is a **single paragraph** — reuses `resolveRunProps`/`BASE_PROPS` from `inline.js` (same pattern as Stage 3 headings) to seed bare cell text, with `bold: true` forced for header cells. Nested block content in a cell (e.g. multiple `<p>`s) is not split into multiple paragraphs — out of scope per the plan.
-  - Explicit `BorderStyle.SINGLE` borders on all table edges + inside gridlines (docx's default empty `borders: {}` option doesn't reliably draw a visible grid).
-  - Registered as `table: convertTable` in `BLOCK_HANDLERS` in `src/blocks.js` — no changes needed to the existing `options.convertBlock`/list-indent machinery from Stage 4.
-- **Tests:** [test/tables.test.js](file:///home/marcus/html-docx/test/tables.test.js) (8 tests) + fixtures [fixtures/table_shaded_header.html](file:///home/marcus/html-docx/fixtures/table_shaded_header.html), [fixtures/table_merged_cells.html](file:///home/marcus/html-docx/fixtures/table_merged_cells.html). All 32 tests across all suites passing (`npm test`).
-- **Visually verified** via LibreOffice (Windows binary through WSL, see Stage 3 notes for the `soffice.exe`/`wslpath -w` approach): shaded+bold header row, unshaded data rows, `<strong>` nested inside a cell, rowspan merge with no duplicated "Q1" text, and colspan merge spanning the full table width all render correctly.
+Expected after Janus commit `chore/docs: process DoD + stage-5 review + verify soft-fail`:
+- Branch `main`
+- Tree **clean** (no stray WIP)
+- Stages 0–5 on history through merge `be90c73` + follow-up process commit
+- `npm test` — style 6 + inline 8 + blocks 8 + lists **4** + tables 8 = **34** tests
+
+---
+
+## Janus did this (context for Claude Code / Gemini) — 2026-07-20
+
+Marcus assigned Janus to fix process drift and leave implementers a clear trail. **Janus did not implement Stage 6/7 features.**
+
+### Problems found
+1. HANDOFF claimed `main (clean state, all Stage 0-5 merged)` while tree had dirty `test/lists.test.js` and untracked Stage 5 review — classic doc/git split BUILD_PLAN was meant to prevent.
+2. Stage 5 was marked `[x]` on tests + owner visual note **before** committed Janus accept; Marcus ruled tests ≠ done for shading/widths/colspan stages.
+3. `testPostListElementsHaveNoNumbering` lived only in the working tree (lost on clean checkout).
+4. `scripts/verify.sh` hard-failed on missing `pdftoppm` despite PDF step working.
+5. Stale branch names: `stage-6` pointed at tables merge with no images work; `stage-5` tip behind merge (hygiene only — Janus may not delete branches unless asked).
+
+### Actions taken by Janus
+| Action | Detail |
+|--------|--------|
+| Formal Stage 5 review | ACCEPT after `npm test` + LO PDF on table fixtures + XML checks (CLEAR shade, DXA widths, vMerge/gridSpan). File: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) |
+| Committed floating lists test | `testPostListElementsHaveNoNumbering` in `test/lists.test.js` |
+| Definition of done | [BUILD_PLAN.md](./BUILD_PLAN.md) Coordination rules §4–8; [JANUS.md](./JANUS.md) DoD summary + new prompt blurb |
+| HANDOFF rewrite | This file — git-truth table + Janus log (you are reading it) |
+| `verify.sh` | PDF required; `pdftoppm` optional unless `STRICT_RASTER=1` |
+| Did **not** | Push to origin; delete branches; start Stage 6/7 code; change `lists.js` / `tables.js` behavior |
+
+### Visual artifacts (local, gitignored `out/`)
+- `out/stage5-review/shaded.docx|pdf`, `merged.docx|pdf` — Janus LO run for Stage 5 accept  
+- Re-run: `./scripts/verify.sh fixtures/table_shaded_header.html`
+
+### What Claude should do next (if taking Stage 7) or Gemini (Stage 6)
+1. `git pull` / `git status -sb` — start from clean `main` after Janus commit.
+2. `git checkout -b stage-6` or `stage-7` from **current** `main` only.
+3. Implement per BUILD_PLAN; do not rewrite list numbering unless Marcus assigns the P1.
+4. End of stage: DoD checklist in BUILD_PLAN — including LO PDF for layout, HANDOFF table filled from **live** git, no “clean” fiction.
+5. Request Janus review for layout-sensitive work when Marcus wants third-source accept.
+
+---
+
+## Technical Details (feature inventory — not a substitute for git)
+
+### 1. Scaffold & verify host
+- `bin/cli.js` — minimal `html2docx <in.html> -o out.docx`
+- `scripts/office/soffice.py` — WSL → Windows LO via `/mnt/c/temp` copy-convert-move
+- `scripts/verify.sh` — DOCX + PDF required; JPEG if `pdftoppm` present
+
+### 2. Stage 1 — CSS (`src/style.js`)
+Cascade, specificity, inheritance, em/rem/% → pt. Tests: `test/style.test.js`.
+
+### 3. Stage 2 — Inline (`src/inline.js`, `src/color.js`)
+TextRun / ExternalHyperlink; exports `BASE_PROPS`, `resolveRunProps`. Tests: `test/inline.test.js`.
+
+### 4. Stage 3 — Blocks (`src/blocks.js`, wired `src/convert.js`)
+h1–h6, p, blockquote, pre, hr; DOCTYPE text filter. Tests: `test/blocks.test.js`.  
+Janus: [docs/reviews/2026-07-20-stage-3.md](./docs/reviews/2026-07-20-stage-3.md) ACCEPT.
+
+### 5. Stage 4 — Lists (`src/lists.js`)
+Real numbering configs on Document; ul/ol nest; continuation indent.  
+**Known P1:** nested lists allocate **new** numId and elevated ilvl → nested `ol` often letters not 1/2/3 under parent.  
+Janus: [docs/reviews/2026-07-20-stage-4.md](./docs/reviews/2026-07-20-stage-4.md) ACCEPT with P1.  
+Tests: `test/lists.test.js` (includes post-list heading has no `numPr`).
+
+### 6. Stage 5 — Tables (`src/tables.js`)
+Real Table; header th/thead bold+CLEAR `D9D9D9`; DXA 9000 equal cols; colspan/rowspan.  
+Janus: [docs/reviews/2026-07-20-stage-5.md](./docs/reviews/2026-07-20-stage-5.md) ACCEPT (unit + LO PDF).  
+Tests: `test/tables.test.js` (8).
+
+### Not done
+- Stage 6 `src/images.js` — stub `return []`
+- Stage 7 full CLI (batch, URL, toc, reference, odt, always-verify)
+- Stage 8 polish (nested list fix, shorthands, etc.)
 
 ---
 
 ## Instructions for the next stage owner
 
-Both Stage 6 (Images, `[antigravity]`) and Stage 7 (CLI + verification loop, `[claude-code]`) can proceed now — see `BUILD_PLAN.md` for each stage's full spec. Reuse `convertInline`/`cssColorToHex`/`resolveRunProps`+`BASE_PROPS` rather than reimplementing; register any new block handler in `BLOCK_HANDLERS` in `src/blocks.js`. Update `BUILD_PLAN.md` + this file and merge to `main` after `npm test` and a visual `scripts/verify.sh` pass (LibreOffice via `soffice.exe`/`wslpath -w` if `soffice` still isn't on the WSL PATH, per Stage 3's notes above) when done.
+1. Branch from latest `main`: `git checkout main && git pull` (if remote used) `&& git checkout -b stage-N`
+2. Implement BUILD_PLAN stage N only
+3. Reuse `convertInline` / `cssColorToHex` / `resolveRunProps`+`BASE_PROPS`; register handlers in `BLOCK_HANDLERS`
+4. `npm test` + layout PDF via `./scripts/verify.sh fixtures/...`
+5. Update BUILD_PLAN `[x]` + deviations; rewrite **Current Status** table from git; merge to `main`
+6. Leave tree clean; link Janus review path if one was requested

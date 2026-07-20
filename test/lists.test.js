@@ -100,10 +100,26 @@ async function testSeparateListsNumberIdRestart() {
   console.log('✓ testSeparateListsNumberIdRestart passed');
 }
 
+async function testPostListElementsHaveNoNumbering() {
+  const { documentXml } = await renderFixture('lists_full.html');
+  
+  const idx = documentXml.indexOf('Simple Numbered List');
+  assert.ok(idx !== -1);
+  
+  const pStart = documentXml.lastIndexOf('<w:p ', idx);
+  const pPrStart = documentXml.indexOf('<w:pPr>', pStart);
+  const pPrEnd = documentXml.indexOf('</w:pPr>', pPrStart);
+  const pPrContent = documentXml.slice(pPrStart, pPrEnd);
+  
+  assert.ok(!pPrContent.includes('w:numPr'), 'expected headings/paragraphs outside lists to have no numbering properties');
+  console.log('✓ testPostListElementsHaveNoNumbering passed');
+}
+
 async function runAll() {
   await testListStructureAndLevelIndents();
   await testInlineStylePreservationInListItem();
   await testSeparateListsNumberIdRestart();
+  await testPostListElementsHaveNoNumbering();
   console.log('All list tests passed successfully!');
 }
 

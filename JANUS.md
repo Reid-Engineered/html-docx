@@ -90,12 +90,21 @@ Janus advice is **normative for process and host facts**. On pure product/API ta
 ## Standing technical positions (don’t relitigate every session)
 
 1. **Goal:** native Word structure and survivable style — not browser paint parity.  
-2. **PDF screenshots** are a *regression aid*, not the definition of done for CSS fidelity.  
-3. **Unit tests + docx XML assertions** gate Stages 1–2; LO raster gates Stages 3+ when host works.  
-4. **One stage → one implementer → finish → update BUILD_PLAN/HANDOFF → merge.**  
-5. **WSL host:** Windows LibreOffice may exist while `soffice` is missing on PATH; verify scripts must resolve that (see VERIFY.md).  
-6. **Empty `convert.js` children** means inline/block work is not user-visible until wired.  
-7. Known Stage-2 footgun (see JANUS_REVIEW): hyperlink path and `__html2docxOptions` — do not mark Stage 2 done without tests covering nested styled links.
+2. **PDF via LibreOffice** is the layout regression aid for stages 3+; not browser pixel parity.  
+3. **Unit tests + docx XML assertions** always; **LO PDF** required for blocks/lists/tables/images before `[x]` when host can run soffice.  
+4. **One stage → one implementer → DoD → merge → HANDOFF matches git.**  
+5. **WSL host:** use `scripts/office/soffice.py` (Windows LO + `/mnt/c/temp`). `pdftoppm` optional (`STRICT_RASTER=1` to require it).  
+6. **Git wins** over HANDOFF/BUILD_PLAN prose when they disagree — fix docs same session.  
+7. Nested list numbering P1 remains open (see Stage 4 review): new numId + elevated ilvl.  
+8. Stage 5 Janus-accepted 2026-07-20 (`docs/reviews/2026-07-20-stage-5.md`).
+
+## Definition of done (summary)
+
+See full checklist in `BUILD_PLAN.md` → Coordination rules. Short form:
+
+`code + npm test + merge to main + (layout? LO PDF) + (Janus review if required) + HANDOFF == git status`
+
+**Never** mark `[x]` or “main clean / merged” from memory.
 
 ---
 
@@ -103,9 +112,11 @@ Janus advice is **normative for process and host facts**. On pure product/API ta
 
 ```text
 This repo is html2docx. Read BUILD_PLAN.md, HANDOFF.md, and JANUS.md before coding.
-Janus is the third-source advisor (docs/JANUS_REVIEW.md, docs/ARCHITECTURE.md, docs/VERIFY.md).
-Do not take over another owner’s stage. Update BUILD_PLAN + HANDOFF when you finish.
+Git is ground truth — run git status -sb and git log -1 before editing HANDOFF.
+Janus is third-source advisor. Stage reviews: docs/reviews/. DoD in BUILD_PLAN coordination rules.
+Do not mark a stage [x] on tests alone if it touches tables/lists/layout — need LO PDF + review when required.
 Pixel-perfect HTML→DOCX is out of scope. Prefer native docx objects + tests.
+After your stage: update BUILD_PLAN + HANDOFF from live git, commit review artifacts, leave tree clean.
 ```
 
 ---
